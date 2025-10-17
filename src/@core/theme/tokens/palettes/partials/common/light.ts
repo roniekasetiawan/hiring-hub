@@ -68,7 +68,10 @@ export const lightTokens = {
         grey:      { 50: neutral[20], 100: neutral[30], 200: neutral[40], 300: neutral[50], 400: neutral[60], 500: neutral[70], 600: neutral[80], 700: neutral[90], 800: '#232425', 900: neutral[100] },
         text:      { primary: neutral[100], secondary: neutral[80], disabled: alpha(neutral[100], .38) },
         divider:   neutral[40],
-        background:{ default: neutral[20], paper: '#fff' },
+        background:{
+            default: '#0a62e6',
+            paper: '#c8085f'
+        },
     },
     shape: { borderRadius: 12 },
 };
