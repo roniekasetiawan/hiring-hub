@@ -13,7 +13,8 @@ export type AppConfig = {
     name: string;
     version: string;
     urls: {
-        base: string | undefined;
+        base?: string | undefined;
+        apis?: string | undefined;
     };
     supabase: {
         url: string;
@@ -25,7 +26,10 @@ export type AppConfig = {
 export const AppConfig: AppConfig = {
     name: env.NEXT_PUBLIC_APP_NAME,
     version: (pkg as any).version ?? '0.0.0',
-    urls: { base: env.NEXT_PUBLIC_APP_URL },
+    urls: {
+        base: env.NEXT_PUBLIC_APP_URL,
+        apis: env.NEXT_PUBLIC_API_HOST,
+    },
     supabase: {
         url: env.NEXT_PUBLIC_SUPABASE_URL,
         anonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
