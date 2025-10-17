@@ -4,5 +4,5 @@ import { AppConfig } from '@/configs';
 export const supabase = createClient(
     AppConfig.supabase.url,
     AppConfig.supabase.anonKey,
-    { auth: { persistSession: true, autoRefreshToken: true } }
+    { auth: { persistSession: false, autoRefreshToken: false } }
 );

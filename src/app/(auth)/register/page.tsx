@@ -1,15 +1,16 @@
 'use client';
 import AuthSplit from '@/@core/layouts/AuthSplit';
-import { Alert, Button, Stack, TextField, Link, InputAdornment } from '@mui/material';
+import { Alert, Button, Stack, TextField, InputAdornment } from '@mui/material';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { supabase } from '@/services/supabase';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import NextLink from 'next/link';
+import {authService} from "@/services/auth.service";
 
 const Schema = z.object({
     full_name: z.string().min(2, 'Too short').max(60).optional(),
@@ -26,24 +27,14 @@ export default function RegisterPage() {
     const router = useRouter();
 
     const onSubmit = async (v: FormValues) => {
-        setErrMsg(null);
-        setInfoMsg(null);
-        const { data, error } = await supabase.auth.signUp({
-            email: v.email,
-            password: v.password,
-            options: { data: { full_name: v.full_name } },
-        });
-        if (error) {
-            const map: Record<string, string> = {
-                'User already registered': 'Email sudah terdaftar.',
-                'Password should be at least 6 characters': 'Password minimal 6 karakter.',
-                'Over Email Rate Limit': 'Terlalu banyak percobaan. Coba lagi nanti.',
-            };
-            setErrMsg(map[error.message] ?? error.message);
-            return;
+        setErrMsg(null); setInfoMsg(null);
+        try {
+            await authService.signup(v.email, v.password, v.full_name);
+            router.replace('/dashboard');
+        } catch (e: any) {
+            const msg = e?.response?.data?.message || e?.message || 'Sign up failed';
+            setErrMsg(msg);
         }
-        if (!data.session) { setInfoMsg('Account created. Please check your email to confirm.'); return; }
-        router.replace('/dashboard');
     };
 
     return (
@@ -84,7 +75,7 @@ export default function RegisterPage() {
 
                 <Stack direction="row" gap={1} justifyContent="center" sx={{ mt: 1 }}>
                     <span>Already have an account?</span>
-                    <Link href="/(auth)/login" underline="hover">Sign in</Link>
+                    <NextLink href="/login">Sign in</NextLink>
                 </Stack>
             </Stack>
         </AuthSplit>

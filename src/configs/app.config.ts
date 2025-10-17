@@ -21,6 +21,7 @@ export type AppConfig = {
         anonKey: string;
     };
     features: FeatureFlags;
+    authSecret: string;
 };
 
 export const AppConfig: AppConfig = {
@@ -39,4 +40,5 @@ export const AppConfig: AppConfig = {
         enableCharts: true,
         enableWebAuthn: false,
     },
+    authSecret: env.JWT_AUTH_SECRET ?? 'sebuah-secret-yang-sangat-panjang-dan-rumit-sekali-du21hhd19',
 } as const;

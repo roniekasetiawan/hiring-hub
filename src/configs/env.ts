@@ -9,6 +9,7 @@ const EnvSchema = z.object({
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(10),
     // server-only
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(10).optional(),
+    JWT_AUTH_SECRET: z.string().min(1).optional(),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -17,7 +18,9 @@ const parsed = EnvSchema.safeParse({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    //server-only
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    JWT_AUTH_SECRET: process.env.JWT_AUTH_SECRET,
 });
 
 if (!parsed.success) {

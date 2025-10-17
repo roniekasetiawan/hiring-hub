@@ -3,7 +3,7 @@ import { useState } from 'react';
 import AuthSplit from '@/@core/layouts/AuthSplit';
 import {
     Alert, Button, IconButton,
-    InputAdornment, Link, Stack, TextField
+    InputAdornment, Stack, TextField
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
@@ -11,8 +11,9 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { supabase } from '@/services/supabase';
 import { useRouter } from 'next/navigation';
+import NextLink from "next/link";
+import { authService } from '@/services/auth.service';
 
 const Schema = z.object({
     email: z.string().email('Enter a valid email'),
@@ -31,17 +32,13 @@ export default function LoginPage() {
 
     const onSubmit = async (v: FormValues) => {
         setErrMsg(null);
-        const { error } = await supabase.auth.signInWithPassword({ email: v.email, password: v.password });
-        if (error) {
-            const map: Record<string, string> = {
-                'Invalid login credentials': 'Email atau password salah.',
-                'Email not confirmed': 'Email belum dikonfirmasi. Cek inbox kamu.',
-                'Over Email Rate Limit': 'Terlalu banyak percobaan. Coba lagi nanti.',
-            };
-            setErrMsg(map[error.message] ?? error.message);
-            return;
+        try {
+            await authService.login(v.email, v.password);
+            router.replace('/dashboard');
+        } catch (e: any) {
+            const msg = e?.response?.data?.message || e?.message || 'Login failed';
+            setErrMsg(msg);
         }
-        router.replace('/dashboard');
     };
 
     return (
@@ -94,7 +91,7 @@ export default function LoginPage() {
 
                 <Stack direction="row" gap={1} justifyContent="center" sx={{ mt: 1 }}>
                     <span>Don't have an account?</span>
-                    <Link href="/(auth)/register" underline="hover">Sign up</Link>
+                    <NextLink href="/register">Singup</NextLink>
                 </Stack>
             </Stack>
         </AuthSplit>
