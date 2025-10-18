@@ -1,12 +1,20 @@
 "use client";
 
 import * as React from "react";
+import { useState } from "react";
+import JobOpeningModal from "@/components/jobs/CreateJobModal";
 
 type Props = {
   onCreateJob: () => void;
 };
 
 export default function JobListEmpty({ onCreateJob }: Props) {
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+  function toggleModal() {
+    setIsModalOpen((prev) => !prev);
+  }
+
   return (
     <div className="flex gap-6">
       <div className="flex-1">
@@ -64,7 +72,7 @@ export default function JobListEmpty({ onCreateJob }: Props) {
 
             <div className="mt-8">
               <button
-                onClick={onCreateJob}
+                onClick={toggleModal}
                 className="rounded-xl hover:cursor-pointer bg-yellow-400 px-7 py-3 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2"
                 data-testid="create-job-empty-cta"
               >
@@ -93,7 +101,7 @@ export default function JobListEmpty({ onCreateJob }: Props) {
 
             <div className="mt-8">
               <button
-                onClick={onCreateJob}
+                onClick={toggleModal}
                 className="rounded-lg hover:cursor-pointer w-full bg-teal-500 px-8 py-3 text-lg font-bold text-white transition hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-gray-900"
                 data-testid="create-job-cta"
               >
@@ -103,6 +111,7 @@ export default function JobListEmpty({ onCreateJob }: Props) {
           </div>
         </div>
       </aside>
+      <JobOpeningModal isOpen={isModalOpen} onClose={toggleModal} />
     </div>
   );
 }
