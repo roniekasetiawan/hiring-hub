@@ -6,7 +6,7 @@ export interface SupabaseJobInsert {
   salary_min?: number;
   salary_max?: number;
   application_form_config: Record<string, "Mandatory" | "Optional" | "Off">;
-  status: "draft";
+  status: "draft" | "active" | "inactive";
   created_by_user_id: string;
 }
 
@@ -22,6 +22,15 @@ export function buildJobPayload(
   formData: any,
   userId: string,
 ): SupabaseJobInsert {
+  const statusMap: Record<number, SupabaseJobInsert["status"]> = {
+    1: "active",
+    2: "inactive",
+    3: "draft",
+  };
+
+  const randomNumber = Math.floor(Math.random() * 3) + 1;
+  const randomStatus = statusMap[randomNumber];
+
   return {
     title: formData.jobName,
     job_type: jobTypeMap[formData.jobType],
@@ -34,7 +43,7 @@ export function buildJobPayload(
       ? parseFloat(formData.maxSalary.replace(/[^0-9]/g, ""))
       : undefined,
     application_form_config: formData.requirements,
-    status: "draft",
+    status: randomStatus,
     created_by_user_id: userId,
   };
 }
