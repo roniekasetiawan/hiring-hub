@@ -11,6 +11,7 @@ export type JwtPayload = {
   sub: string;
   email: string;
   role: "admin" | "recruiter" | "applicant";
+  full_name: string;
 };
 
 export type ServerUser = {
