@@ -5,6 +5,7 @@ import JobListEmpty from "@/components/jobs/JobListEmpty";
 import JobCard from "@/components/jobs/JobList";
 import JobOpeningModal from "@/components/jobs/CreateJobModal";
 import { useState } from "react";
+import { useToast } from "@/components/(info)/Toast";
 
 type JobStatus = "Active" | "Inactive" | "Draft";
 
@@ -96,6 +97,7 @@ const fetcher = (url: string) =>
 
 export default function JobListPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const toast = useToast();
   // const { data, isLoading } = useSWR<{ data: Job[] }>('/api/jobs?scope=admin', fetcher);
   const data = {
     data: [],
@@ -178,7 +180,8 @@ export default function JobListPage() {
 
             <div className="mt-8">
               <button
-                onClick={toggleModal}
+                // onClick={toggleModal}
+                onClick={() => toast.success("Success Toast !!!")}
                 className="rounded-lg hover:cursor-pointer w-full bg-teal-500 px-8 py-3 text-lg font-bold text-white transition hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-gray-900"
                 data-testid="create-job-cta"
               >
