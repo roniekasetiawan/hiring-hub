@@ -5,9 +5,8 @@ import JobListEmpty from "@/components/jobs/JobListEmpty";
 import JobCard from "@/components/jobs/JobList";
 import JobOpeningModal from "@/components/jobs/CreateJobModal";
 import { useState } from "react";
-import { useToast } from "@/components/(info)/Toast";
 import PageID from "@/@core/components/PageID";
-import { useAuthenticationProvider } from "@/context/AuthenticationProvider";
+import useSWR from "swr";
 
 type JobStatus = "Active" | "Inactive" | "Draft";
 
@@ -20,95 +19,14 @@ interface Jobs {
   startDate: string;
 }
 
-const mockJobs: Jobs[] = [
-  {
-    id: 1,
-    title: "Front End Developer",
-    salaryMin: 7000000,
-    salaryMax: 8000000,
-    status: "Active",
-    startDate: "1 Oct 2025",
-  },
-  {
-    id: 2,
-    title: "Data Scientist",
-    salaryMin: 7000000,
-    salaryMax: 12500000,
-    status: "Inactive",
-    startDate: "2 Oct 2025",
-  },
-  {
-    id: 3,
-    title: "Data Scientist",
-    salaryMin: 7000000,
-    salaryMax: 12500000,
-    status: "Draft",
-    startDate: "3 Sep 2025",
-  },
-  {
-    id: 4,
-    title: "Data Scientist",
-    salaryMin: 7000000,
-    salaryMax: 12500000,
-    status: "Draft",
-    startDate: "3 Sep 2025",
-  },
-  {
-    id: 5,
-    title: "Data Scientist",
-    salaryMin: 7000000,
-    salaryMax: 12500000,
-    status: "Draft",
-    startDate: "3 Sep 2025",
-  },
-  {
-    id: 6,
-    title: "Data Scientist",
-    salaryMin: 7000000,
-    salaryMax: 12500000,
-    status: "Draft",
-    startDate: "3 Sep 2025",
-  },
-  {
-    id: 7,
-    title: "Data Scientist",
-    salaryMin: 7000000,
-    salaryMax: 12500000,
-    status: "Draft",
-    startDate: "3 Sep 2025",
-  },
-  {
-    id: 8,
-    title: "Data Scientist",
-    salaryMin: 7000000,
-    salaryMax: 12500000,
-    status: "Draft",
-    startDate: "3 Sep 2025",
-  },
-];
-
-type Job = {
-  id: string;
-  title: string;
-  status: "active" | "inactive" | "draft";
-  salary_range?: { display_text?: string };
-};
-
 const fetcher = (url: string) =>
   fetch(url, { credentials: "include" }).then((r) => r.json());
 
 export default function JobListPage() {
-  const { user } = useAuthenticationProvider();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const toast = useToast();
-  // const { data, isLoading } = useSWR<{ data: Job[] }>('/api/jobs?scope=admin', fetcher);
-  const data = {
-    data: [],
-  };
-  const isLoading = false;
+  const { data, isLoading } = useSWR<{ data: Jobs[] }>("/api/jobs", fetcher);
 
-  // const jobs = data?.data ?? [];
-  const jobs = mockJobs;
+  const jobs = data?.data ?? [];
 
   if (isLoading) {
     return (
@@ -170,7 +88,7 @@ export default function JobListPage() {
             <JobListEmpty onCreateJob={toggleModal} />
           ) : (
             <div className="flex min-h-screen w-full flex-col font-sans mt-5">
-              {mockJobs.map((job) => (
+              {jobs.map((job) => (
                 <JobCard key={job.id} job={job} />
               ))}
             </div>

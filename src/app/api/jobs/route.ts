@@ -37,3 +37,64 @@ export async function POST(req: NextRequest) {
     return success(newJob, 201, "Job opening created successfully.");
   });
 }
+
+type JobStatus = "Active" | "Inactive" | "Draft";
+interface FrontendJob {
+  id: string;
+  title: string;
+  salaryMin: number;
+  salaryMax: number;
+  status: JobStatus;
+  startDate: string;
+}
+
+export async function GET(req: NextRequest) {
+  return safe(async () => {
+    const user = await getServerUser();
+
+    let query = supabase.from("jobs").select("*");
+
+    if (user && ["admin", "recruiter"].includes(user.role as string)) {
+      query = query.eq("created_by_user_id", user.id);
+    } else {
+      query = query.eq("status", "active");
+    }
+
+    const { data: jobsFromDb, error: dbErr } = await query.order("created_at", {
+      ascending: false,
+    });
+
+    if (dbErr) {
+      return error(
+        { code: dbErr.code },
+        500,
+        `Failed to fetch jobs: ${dbErr.message}`,
+      );
+    }
+
+    const transformedJobs: FrontendJob[] = (jobsFromDb || []).map((job) => {
+      const capitalizedStatus = (job.status.charAt(0).toUpperCase() +
+        job.status.slice(1)) as JobStatus;
+
+      const formattedDate = new Date(job.created_at).toLocaleDateString(
+        "en-GB",
+        {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        },
+      );
+
+      return {
+        id: job.id,
+        title: job.title,
+        salaryMin: job.salary_min ?? 0,
+        salaryMax: job.salary_max ?? 0,
+        status: capitalizedStatus,
+        startDate: formattedDate,
+      };
+    });
+
+    return success(transformedJobs);
+  });
+}
