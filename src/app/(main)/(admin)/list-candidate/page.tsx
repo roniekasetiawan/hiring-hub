@@ -1,5 +1,6 @@
 import PageID from "@/@core/components/PageID";
 import CandidateTable from "@/components/(data-display)/table";
+import { Typography } from "@mui/material";
 
 interface Candidate {
   id: number;
@@ -149,6 +150,9 @@ export default function JobListPage() {
         ],
       }}
     >
+      <Typography variant="h3" color="black" mb={3}>
+        Front End Developer
+      </Typography>
       <CandidateTable mockCandidates={mockCandidates} paginateBy={10} />
     </PageID>
   );
