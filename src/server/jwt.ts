@@ -18,6 +18,7 @@ export type ServerUser = {
   id: string;
   email?: string;
   role?: "admin" | "recruiter" | "applicant";
+  full_name?: unknown;
 };
 
 export async function getServerUser(): Promise<ServerUser | null> {
@@ -31,6 +32,7 @@ export async function getServerUser(): Promise<ServerUser | null> {
       id: String(payload.sub),
       email: payload.email as string | undefined,
       role: payload.role as ServerUser["role"],
+      full_name: payload.full_name,
     };
   } catch {
     return null;

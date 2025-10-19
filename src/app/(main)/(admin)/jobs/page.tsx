@@ -7,6 +7,7 @@ import JobOpeningModal from "@/components/jobs/CreateJobModal";
 import { useState } from "react";
 import { useToast } from "@/components/(info)/Toast";
 import PageID from "@/@core/components/PageID";
+import { useAuthenticationProvider } from "@/context/AuthenticationProvider";
 
 type JobStatus = "Active" | "Inactive" | "Draft";
 
@@ -97,6 +98,7 @@ const fetcher = (url: string) =>
   fetch(url, { credentials: "include" }).then((r) => r.json());
 
 export default function JobListPage() {
+  const { user } = useAuthenticationProvider();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const toast = useToast();
   // const { data, isLoading } = useSWR<{ data: Job[] }>('/api/jobs?scope=admin', fetcher);
