@@ -195,8 +195,7 @@ export default function JobListPage() {
 
               <div className="mt-8">
                 <button
-                  // onClick={toggleModal}
-                  onClick={() => toast.success("Success Toast !!!")}
+                  onClick={toggleModal}
                   className="rounded-lg hover:cursor-pointer w-full bg-teal-500 px-8 py-3 text-lg font-bold text-white transition hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-gray-900"
                   data-testid="create-job-cta"
                 >

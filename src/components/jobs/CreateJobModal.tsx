@@ -7,20 +7,42 @@ import React, {
   InputHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
+import { useForm, Controller, SubmitHandler, Resolver } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 type Option = "Mandatory" | "Optional" | "Off";
+
+export const jobOpeningSchema = z.object({
+  jobName: z.string().min(1, "Job name is required"),
+  jobType: z.enum(
+    ["Full-time", "Part-time", "Contract", "Internship", "Freelance"],
+    { error: "Job type is required" },
+  ),
+  numCandidates: z.coerce
+    .number({ error: "Must be a number" })
+    .int()
+    .min(1, "At least 1 candidate is needed"),
+  requirements: z.record(z.string(), z.enum(["Mandatory", "Optional", "Off"])),
+  jobDescription: z.string().min(1, "Job description is required"),
+  minSalary: z.string().min(1, "Minimum salary is required"),
+  maxSalary: z.string().min(1, "Maximum salary is required"),
+});
+
+export type JobOpeningFormValues = z.infer<typeof jobOpeningSchema>;
 
 interface CustomSelectProps {
   label: string;
   options: string[];
-  selected: string;
-  onSelect: (option: string) => void;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
 }
 
 type BaseFormFieldProps = {
-  id: string;
   label: string;
   prefix?: string;
+  error?: string;
 };
 
 type InputFormFieldProps = BaseFormFieldProps &
@@ -38,6 +60,8 @@ type FormFieldProps = InputFormFieldProps | TextareaFormFieldProps;
 interface RequirementToggleProps {
   label: string;
   disabledOptions?: Option[];
+  value: Option;
+  onChange: (value: Option) => void;
 }
 
 interface ModalProps {
@@ -55,14 +79,16 @@ interface JobOpeningModalProps {
 
 interface JobRequirement {
   label: string;
+  key: string;
   disabled: Option[];
 }
 
 const CustomSelect: FC<CustomSelectProps> = ({
   label,
   options,
-  selected,
-  onSelect,
+  value,
+  onChange,
+  error,
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const selectRef = useRef<HTMLDivElement>(null);
@@ -77,15 +103,8 @@ const CustomSelect: FC<CustomSelectProps> = ({
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleSelect = (option: string) => {
-    onSelect(option);
-    setIsOpen(false);
-  };
 
   return (
     <div>
@@ -96,10 +115,10 @@ const CustomSelect: FC<CustomSelectProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="relative w-full cursor-default rounded-md border border-gray-200 bg-white py-2 pl-3 pr-10 text-left text-sm"
+          className={`relative w-full cursor-default rounded-md border bg-white py-2 pl-3 pr-10 text-left text-sm ${error ? "border-red-500" : "border-gray-200"}`}
         >
           <span className="block truncate text-gray-600">
-            {selected || "Select job type"}
+            {value || "Select job type"}
           </span>
           <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
             <svg
@@ -121,7 +140,10 @@ const CustomSelect: FC<CustomSelectProps> = ({
             {options.map((option) => (
               <li
                 key={option}
-                onClick={() => handleSelect(option)}
+                onClick={() => {
+                  onChange(option);
+                  setIsOpen(false);
+                }}
                 className="relative cursor-default select-none py-2 pl-3 pr-9 text-black hover:bg-teal-50"
               >
                 <span className="block truncate">{option}</span>
@@ -130,62 +152,48 @@ const CustomSelect: FC<CustomSelectProps> = ({
           </ul>
         )}
       </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 };
 
-const FormField: FC<FormFieldProps> = (props) => {
-  const { id, label, type, prefix } = props;
-
+const FormField: FC<FormFieldProps> = ({ label, prefix, error, ...rest }) => {
   const commonClasses =
-    "w-full border-1 rounded-md bg-transparent p-2 border-gray-200 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0";
+    "w-full border-1 rounded-md bg-transparent p-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1";
   const withPrefixClasses = "pl-9";
+  const errorClasses = "border-red-500 focus:ring-red-500 focus:border-red-500";
+  const defaultClasses =
+    "border-gray-200 focus:ring-teal-500 focus:border-teal-500";
 
-  const renderInput = () => {
-    if (type === "textarea") {
-      const { id, className, ...rest } = props as TextareaFormFieldProps;
-      return (
-        <textarea
-          id={id}
-          className={`${commonClasses} ${className || ""}`}
-          {...rest}
-        />
-      );
-    }
+  const allProps = { ...rest };
 
-    const {
-      id,
-      className,
-      type: inputType,
-      ...rest
-    } = props as InputFormFieldProps;
-
-    return (
+  return (
+    <div className="pb-2 pt-1">
+      <label
+        htmlFor={allProps.name}
+        className="mb-1 block text-xs font-medium text-gray-500"
+      >
+        {label}
+      </label>
       <div className="relative">
         {prefix && (
           <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-black">
             {prefix}
           </span>
         )}
-        <input
-          id={id}
-          type={inputType}
-          className={`${commonClasses} ${prefix ? withPrefixClasses : ""} ${className || ""}`}
-          {...rest}
-        />
+        {allProps.type === "textarea" ? (
+          <textarea
+            className={`${commonClasses} ${error ? errorClasses : defaultClasses}`}
+            {...(allProps as TextareaHTMLAttributes<HTMLTextAreaElement>)}
+          />
+        ) : (
+          <input
+            className={`${commonClasses} ${prefix ? withPrefixClasses : ""} ${error ? errorClasses : defaultClasses}`}
+            {...(allProps as InputHTMLAttributes<HTMLInputElement>)}
+          />
+        )}
       </div>
-    );
-  };
-
-  return (
-    <div className="pb-2 pt-1">
-      <label
-        htmlFor={id}
-        className="mb-1 block text-xs font-medium text-gray-500"
-      >
-        {label}
-      </label>
-      {renderInput()}
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 };
@@ -193,19 +201,18 @@ const FormField: FC<FormFieldProps> = (props) => {
 const RequirementToggle: FC<RequirementToggleProps> = ({
   label,
   disabledOptions = [],
+  value,
+  onChange,
 }) => {
-  const [selection, setSelection] = useState<Option>("Mandatory");
   const options: Option[] = ["Mandatory", "Optional", "Off"];
 
   const getButtonClass = (option: Option): string => {
     const baseClass =
       "rounded-full px-3 py-1 text-xs font-medium transition border border-gray-200 hover:cursor-pointer duration-150 ease-in-out";
-    const isDisabled = disabledOptions.includes(option);
-
-    if (isDisabled) {
-      return `${baseClass} bg-gray-100 text-gray-400 cursor-not-allowed hover:cursor-not-allowed`;
+    if (disabledOptions.includes(option)) {
+      return `${baseClass} bg-gray-100 text-gray-400 cursor-not-allowed`;
     }
-    if (option === selection) {
+    if (option === value) {
       return `${baseClass} bg-white border border-teal-400 text-teal-600 shadow-sm`;
     }
     return `${baseClass} text-gray-500 hover:bg-gray-100`;
@@ -220,7 +227,8 @@ const RequirementToggle: FC<RequirementToggleProps> = ({
           return (
             <button
               key={option}
-              onClick={() => !isDisabled && setSelection(option)}
+              type="button"
+              onClick={() => !isDisabled && onChange(option)}
               className={getButtonClass(option)}
               disabled={isDisabled}
             >
@@ -241,10 +249,9 @@ const Modal: FC<ModalProps> = ({
   footer,
 }) => {
   if (!isOpen) return null;
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 pt-10"
+      className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/60 pt-10"
       onClick={onClose}
     >
       <div
@@ -283,7 +290,6 @@ const Modal: FC<ModalProps> = ({
 };
 
 const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
-  const [jobType, setJobType] = useState<string>("Full-time");
   const jobTypeOptions: string[] = [
     "Full-time",
     "Contract",
@@ -293,18 +299,48 @@ const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
   ];
 
   const jobRequirements: JobRequirement[] = [
-    { label: "Full Name", disabled: ["Optional", "Off"] },
-    { label: "Photo Profile", disabled: ["Optional", "Off"] },
-    { label: "Gender", disabled: [] },
-    { label: "Domicile", disabled: [] },
-    { label: "Email", disabled: ["Optional", "Off"] },
-    { label: "Phone number", disabled: [] },
-    { label: "LinkedIn link", disabled: [] },
-    { label: "Date of Birth", disabled: [] },
+    { label: "Full Name", key: "fullName", disabled: ["Optional", "Off"] },
+    {
+      label: "Photo Profile",
+      key: "photoProfile",
+      disabled: ["Optional", "Off"],
+    },
+    { label: "Gender", key: "gender", disabled: [] },
+    { label: "Domicile", key: "domicile", disabled: [] },
+    { label: "Email", key: "email", disabled: ["Optional", "Off"] },
+    { label: "Phone number", key: "phoneNumber", disabled: [] },
+    { label: "LinkedIn link", key: "linkedinLink", disabled: [] },
+    { label: "Date of Birth", key: "dateOfBirth", disabled: [] },
   ];
 
-  const handleSubmit = () => {
-    console.log("Job Published!");
+  const defaultRequirements = Object.fromEntries(
+    jobRequirements.map((req) => [
+      req.key,
+      req.disabled.length > 0 ? "Mandatory" : "Optional",
+    ]),
+  ) as Record<string, Option>;
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<JobOpeningFormValues>({
+    resolver: zodResolver(jobOpeningSchema) as any,
+    defaultValues: {
+      jobName: "",
+      jobType: "Full-time",
+      numCandidates: 1,
+      requirements: defaultRequirements,
+      jobDescription: "",
+      minSalary: "",
+      maxSalary: "",
+    },
+  });
+
+  const onSubmit: SubmitHandler<JobOpeningFormValues> = (data) => {
+    console.log("Form Data:", data);
+    alert("Form data has been logged to the console. Check it out!");
     onClose();
   };
 
@@ -315,56 +351,80 @@ const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
       title="Job Opening"
       footer={
         <button
-          onClick={handleSubmit}
-          className="rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
+          type="submit"
+          form="job-opening-form"
+          disabled={isSubmitting}
+          className="rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
         >
-          Publish Job
+          {isSubmitting ? "Publishing..." : "Publish Job"}
         </button>
       }
     >
-      <div className="space-y-6">
+      <form
+        id="job-opening-form"
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-6"
+      >
         <FormField
           label="Job Name*"
-          id="jobName"
           type="text"
           placeholder="Front End Developer"
+          error={errors.jobName?.message}
+          {...register("jobName")}
         />
-        <CustomSelect
-          label="Job Type*"
-          options={jobTypeOptions}
-          selected={jobType}
-          onSelect={setJobType}
+
+        <Controller
+          name="jobType"
+          control={control}
+          render={({ field }) => (
+            <CustomSelect
+              label="Job Type*"
+              options={jobTypeOptions}
+              value={field.value}
+              onChange={field.onChange}
+              error={errors.jobType?.message}
+            />
+          )}
         />
+
         <FormField
           label="Job Description*"
-          id="jobDescription"
           type="textarea"
           rows={8}
           placeholder="• Develop, test, and maintain responsive web applications..."
+          error={errors.jobDescription?.message}
+          {...register("jobDescription")}
         />
+
         <FormField
           label="Number of Candidate Needed*"
-          id="numCandidates"
           type="number"
           placeholder="1"
+          error={errors.numCandidates?.message}
+          {...register("numCandidates")}
         />
+
         <div className="border-t border-gray-300 border-dashed mb-3"></div>
+
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <FormField
             label="Minimum Estimated Salary"
-            id="minSalary"
             type="text"
             placeholder="7.000.000"
             prefix="Rp"
+            error={errors.minSalary?.message}
+            {...register("minSalary")}
           />
           <FormField
             label="Maximum Estimated Salary"
-            id="maxSalary"
             type="text"
             placeholder="8.000.000"
             prefix="Rp"
+            error={errors.maxSalary?.message}
+            {...register("maxSalary")}
           />
         </div>
+
         <div className="border border-gray-200 p-5 rounded-lg">
           <h4 className="mb-4 font-semibold text-gray-800">
             Minimum Profile Information Required
@@ -372,22 +432,30 @@ const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
           <div>
             {jobRequirements.map((req, index) => (
               <div
-                key={req.label}
+                key={req.key}
                 className={
                   index < jobRequirements.length - 1
                     ? "border-b border-gray-200"
                     : ""
                 }
               >
-                <RequirementToggle
-                  label={req.label}
-                  disabledOptions={req.disabled}
+                <Controller
+                  name={`requirements.${req.key}` as any}
+                  control={control}
+                  render={({ field }) => (
+                    <RequirementToggle
+                      label={req.label}
+                      disabledOptions={req.disabled}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
                 />
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 };

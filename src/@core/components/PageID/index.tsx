@@ -25,7 +25,6 @@ const PageID = ({
   const { setBreadcrumbs } = useMainLayout();
 
   useEffect(() => {
-    console.log("bread => ", breadcrumbs);
     if (breadcrumbs) setBreadcrumbs(breadcrumbs);
   }, [breadcrumbs, setBreadcrumbs]);
 
