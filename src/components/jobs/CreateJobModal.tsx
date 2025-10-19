@@ -1,3 +1,5 @@
+"use client";
+
 import React, {
   useState,
   useEffect,
@@ -7,9 +9,10 @@ import React, {
   InputHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
-import { useForm, Controller, SubmitHandler, Resolver } from "react-hook-form";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert } from "@mui/material";
 
 type Option = "Mandatory" | "Optional" | "Off";
 
@@ -290,6 +293,7 @@ const Modal: FC<ModalProps> = ({
 };
 
 const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
+  const [apiError, setApiError] = useState<string | null>(null);
   const jobTypeOptions: string[] = [
     "Full-time",
     "Contract",
@@ -325,6 +329,7 @@ const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
+    reset,
   } = useForm<JobOpeningFormValues>({
     resolver: zodResolver(jobOpeningSchema) as any,
     defaultValues: {
@@ -338,10 +343,31 @@ const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
     },
   });
 
-  const onSubmit: SubmitHandler<JobOpeningFormValues> = (data) => {
-    console.log("Form Data:", data);
-    alert("Form data has been logged to the console. Check it out!");
-    onClose();
+  const onSubmit: SubmitHandler<JobOpeningFormValues> = async (data) => {
+    setApiError(null);
+    try {
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "An unknown error occurred");
+      }
+
+      alert("Job opening created successfully!");
+      reset();
+      onClose();
+    } catch (error: any) {
+      setApiError(error.message);
+      console.error("Failed to create job opening:", error);
+    }
   };
 
   return (
@@ -365,6 +391,8 @@ const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-6"
       >
+        {apiError && <Alert severity="error">{apiError}</Alert>}
+
         <FormField
           label="Job Name*"
           type="text"
