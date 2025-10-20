@@ -27,7 +27,7 @@ const MainHeader = (): Readonly<ReactNode> => {
   }));
 
   return (
-    <AppBarStyled position="sticky" color="default">
+    <AppBarStyled color="default">
       <ToolbarStyled sx={{ maxWidth: "1300px", margin: "0px auto" }}>
         {isLgUp && (
           <ContainerBreadcrumbs

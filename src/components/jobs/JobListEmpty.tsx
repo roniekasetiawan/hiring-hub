@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useAuthenticationProvider } from "@/context/AuthenticationProvider";
 
 type Props = {
-  onCreateJob: () => void;
+  onCreateJob?: () => void;
 };
 
 export default function JobListEmpty({ onCreateJob }: Props) {
+  const { user } = useAuthenticationProvider();
   return (
     <div className="flex min-h-[60vh] items-center justify-center bg-gray-50 p-4">
       <div className="mx-auto max-w-md text-center">
@@ -29,15 +31,17 @@ export default function JobListEmpty({ onCreateJob }: Props) {
           Create a job opening now and start the candidate process.
         </p>
 
-        <div className="mt-8">
-          <button
-            onClick={onCreateJob}
-            className="rounded-xl hover:cursor-pointer bg-yellow-400 px-7 py-3 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2"
-            data-testid="create-job-empty-cta"
-          >
-            Create a new job
-          </button>
-        </div>
+        {user?.role.toLowerCase() !== "applicant" && (
+          <div className="mt-8">
+            <button
+              onClick={onCreateJob ? onCreateJob : () => {}}
+              className="rounded-xl hover:cursor-pointer bg-yellow-400 px-7 py-3 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2"
+              data-testid="create-job-empty-cta"
+            >
+              Create a new job
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
