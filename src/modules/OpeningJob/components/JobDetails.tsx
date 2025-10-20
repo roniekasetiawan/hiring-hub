@@ -20,7 +20,7 @@ export const JobDetails = ({ job }: JobDetailsProps) => {
   }
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-gray-200 bg-white p-6 max-h-screen position-sticky">
+    <div className="flex h-full flex-col rounded-lg border border-gray-200  p-6 max-h-screen position-sticky">
       <div className="flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">

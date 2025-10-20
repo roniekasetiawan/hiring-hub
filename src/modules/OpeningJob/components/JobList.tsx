@@ -29,7 +29,7 @@ export const JobList = ({
   });
 
   return (
-    <div className="h-full space-y-4 overflow-y-auto rounded-lg border border-gray-200 bg-white p-4 max-h-screen overflow-scroll pb-[200px]">
+    <div className="h-full space-y-4 overflow-y-auto rounded-lg border p-4 max-h-screen overflow-scroll pb-[200px]">
       {jobs.map((job, index) => (
         <JobCard
           key={index + job.id}
