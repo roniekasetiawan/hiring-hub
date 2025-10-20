@@ -19,3 +19,21 @@ Started supabase local development setup.
 
  sb migration new add_password_column
  sb db push
+
+
+
+ Recruiter Account :
+ recruiter.account1@gmail.com
+ recruiter.account1
+ recruiter.account4@gmail.com
+ recruiter.account4
+ recruiter.account3@gmail.com
+ recruiter.account3
+
+ Applicant Account :
+ recruiter.account2@gmail.com
+ recruiter.account2
+ applicant.account2@gmail.com
+ applicant.account2
+ applicant.account3@gmail.com
+ applicant.account3
