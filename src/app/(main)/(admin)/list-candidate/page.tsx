@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import useDebounce from "@/hooks/useDebounce";
 
@@ -56,10 +56,9 @@ export default function JobListPage() {
     apiUrl.append("q", debouncedSearchTerm);
   }
   if (sortConfig) {
-    // Implement server-side sorting if needed
+    apiUrl.append("sort", sortConfig.key);
+    apiUrl.append("order", sortConfig.direction);
   }
-
-  console.log("url => ", apiUrl.toString());
 
   const {
     data: swrData,
@@ -69,12 +68,6 @@ export default function JobListPage() {
     jobId ? `/api/candidates?${apiUrl.toString()}` : null,
     fetcherWithPagination,
   );
-
-  console.log({
-    swrData,
-    isLoading,
-    error,
-  });
 
   const candidates: Candidate[] = swrData?.data ?? [];
   const totalPages = swrData?.totalPages ?? 1;
@@ -106,6 +99,7 @@ export default function JobListPage() {
       direction = "descending";
     }
     setSortConfig({ key, direction });
+    setCurrentPage(1);
   };
 
   if (isLoading && !swrData) {

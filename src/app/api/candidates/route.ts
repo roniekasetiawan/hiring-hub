@@ -30,15 +30,30 @@ export async function GET(req: NextRequest) {
       Math.max(1, Number(searchParams.get("limit") ?? 10)),
     );
     const q = (searchParams.get("q") ?? "").trim();
+    const sortKey = searchParams.get("sort");
+    const sortOrder = searchParams.get("order");
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
+
+    const columnMap: Record<string, string> = {
+      namaLengkap: "full_name",
+      emailAddress: "email",
+      phoneNumbers: "phone_number",
+      dateOfBirth: "date_of_birth",
+      domicile: "domicile",
+      gender: "gender",
+      linkLinkedin: "linkedin_url",
+    };
+
+    const dbSortColumn = sortKey ? columnMap[sortKey] : "created_at";
+    const isAscending = sortOrder === "ascending";
 
     let query = supabase
       .from("job_applications")
       .select("*", { count: "exact" })
       .eq("job_id", jobId)
-      .order("created_at", { ascending: false })
+      .order(dbSortColumn || "created_at", { ascending: isAscending })
       .range(from, to);
 
     if (q) {
