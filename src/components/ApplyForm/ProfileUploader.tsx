@@ -1,29 +1,41 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { Camera, Upload } from "lucide-react";
-import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
+import { FieldError } from "react-hook-form";
 
 interface ProfileUploaderProps {
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
-  name: string;
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>> | undefined;
+  value?: File | string | null;
+  onChange?: (file: File) => void;
+  onTakePicClick: () => void;
+  error?: FieldError;
 }
 
-const ProfileUploader = React.forwardRef<
-  HTMLInputElement,
-  ProfileUploaderProps
->(({ onChange, onBlur, name, error }, ref) => {
+const ProfileUploader: React.FC<ProfileUploaderProps> = ({
+  value,
+  onChange,
+  onTakePicClick,
+  error,
+}) => {
   const [preview, setPreview] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e);
-    const file = e.target.files?.[0];
-    if (file) {
-      setPreview(URL.createObjectURL(file));
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    if (value) {
+      if (typeof value === "string") {
+        setPreview(value);
+      } else if (value instanceof File) {
+        objectUrl = URL.createObjectURL(value);
+        setPreview(objectUrl);
+      }
     } else {
       setPreview(null);
     }
-  };
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [value]);
 
   return (
     <div className="flex flex-col items-start space-y-4 pt-2">
@@ -34,7 +46,7 @@ const ProfileUploader = React.forwardRef<
 
       {error && (
         <span className="block self-start text-xs font-medium text-red-500 -mt-2 mb-1">
-          Required
+          {error.message || "Required"}
         </span>
       )}
 
@@ -48,30 +60,24 @@ const ProfileUploader = React.forwardRef<
         ) : (
           <img
             src={"/assets/images/default_avatar.png"}
-            alt="Profile Preview"
+            alt="Default Avatar"
             className="w-full h-full object-cover"
           />
         )}
       </div>
 
       <div className="flex gap-4">
-        <label className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
+        <button
+          type="button"
+          onClick={onTakePicClick}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+        >
           <Camera size={16} />
-          Choose File
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            name={name}
-            ref={ref}
-            onChange={handleChange}
-            onBlur={onBlur}
-          />
-        </label>
+          Take A Picture
+        </button>
       </div>
     </div>
   );
-});
+};
 
-ProfileUploader.displayName = "ProfileUploader";
 export default ProfileUploader;

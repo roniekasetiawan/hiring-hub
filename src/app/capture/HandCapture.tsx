@@ -8,7 +8,13 @@ import {
   DrawingUtils,
 } from "@mediapipe/tasks-vision";
 
-export default function CapturePage() {
+export default function CaptureModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (imgData: string) => void;
+}) {
   const [activePose, setActivePose] = useState(0);
   const [capturing, setCapturing] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -34,43 +40,50 @@ export default function CapturePage() {
     let cancelled = false;
 
     const startCamera = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+        streamRef.current = stream;
+      } catch (e: any) {
+        setCamError(e?.message ?? "Camera not available");
       }
     };
 
     const startDetector = async () => {
-      const fileset = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm",
-      );
-      detectorRef.current = await HandLandmarker.createFromOptions(fileset, {
-        baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-        },
-        numHands: 1,
-        runningMode: "VIDEO",
-      });
+      try {
+        const fileset = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm",
+        );
+        detectorRef.current = await HandLandmarker.createFromOptions(fileset, {
+          baseOptions: {
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          },
+          numHands: 1,
+          runningMode: "VIDEO",
+        });
+      } catch (e: any) {
+        setCamError(e?.message ?? "Detector setup failed");
+      }
     };
 
     const loop = () => {
-      if (!detectEnabled || cancelled) return;
+      if (cancelled || !detectEnabled) return;
       rafRef.current = requestAnimationFrame(loop);
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const detector = detectorRef.current;
-      if (!video || !canvas || !detector) return;
+
+      if (!video || !canvas || !detector || video.videoWidth === 0) {
+        return;
+      }
 
       const now = performance.now();
       if (now - lastTsRef.current < 33) return;
@@ -128,12 +141,22 @@ export default function CapturePage() {
     };
 
     const startAll = async () => {
-      try {
-        if (!streamRef.current) await startCamera();
-        if (!detectorRef.current) await startDetector();
-        if (detectEnabled) loop();
-      } catch (e: any) {
-        setCamError(e?.message ?? "Camera not available");
+      if (cancelled) return;
+
+      if (!streamRef.current) await startCamera();
+      if (!detectorRef.current) await startDetector();
+
+      if (
+        videoRef.current &&
+        !videoRef.current.srcObject &&
+        streamRef.current
+      ) {
+        videoRef.current.srcObject = streamRef.current;
+        await videoRef.current.play();
+      }
+
+      if (detectEnabled && detectorRef.current) {
+        loop();
       }
     };
 
@@ -142,13 +165,18 @@ export default function CapturePage() {
     return () => {
       cancelled = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      detectorRef.current?.close();
-      detectorRef.current = null;
       const ctx = canvasRef.current?.getContext("2d");
       if (ctx && canvasRef.current)
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     };
-  }, [detectEnabled, activePose]);
+  }, [detectEnabled, activePose, photo]);
+
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      detectorRef.current?.close();
+    };
+  }, []);
 
   const nextPose = () => {
     setActivePose((prev) => {
@@ -181,21 +209,13 @@ export default function CapturePage() {
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d")!;
     ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1); // karena preview dimirror, hasil foto kita mirror balik biar natural
+    ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const img = canvas.toDataURL("image/jpeg");
     setPhoto(img);
     setCountdown(null);
-    setDetectEnabled(false); // matikan deteksi setelah foto
+    setDetectEnabled(false);
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    const overlay = canvasRef.current?.getContext("2d");
-    if (overlay && canvasRef.current)
-      overlay.clearRect(
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height,
-      );
   };
 
   const onRetake = () => {
@@ -206,11 +226,17 @@ export default function CapturePage() {
     holdStartRef.current = null;
     releaseStartRef.current = null;
     (smoothBox as any)._prev = null;
-    setDetectEnabled(true); // hidupkan lagi deteksi
+    setDetectEnabled(true);
+  };
+
+  const handleSubmit = () => {
+    if (photo) {
+      onSubmit(photo);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
       <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div className="relative px-6 pt-6 pb-3">
           <h2 className="text-2xl font-semibold text-slate-900">
@@ -221,6 +247,7 @@ export default function CapturePage() {
           </p>
           <button
             aria-label="Close"
+            onClick={onClose}
             className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full text-slate-700 hover:bg-slate-50"
           >
             <svg width="16" height="16" viewBox="0 0 24 24">
@@ -269,7 +296,10 @@ export default function CapturePage() {
               >
                 Retake photo
               </button>
-              <button className="px-4 py-2 rounded-md bg-green-700 text-white">
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-2 rounded-md bg-green-700 text-white"
+              >
                 Submit
               </button>
             </div>
@@ -345,8 +375,6 @@ function Arrow() {
     </div>
   );
 }
-
-/* ===== Helpers ===== */
 
 type Pt = { x: number; y: number };
 type BBox = { x: number; y: number; w: number; h: number };
