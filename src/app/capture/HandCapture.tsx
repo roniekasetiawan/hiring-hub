@@ -1,10 +1,41 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function CapturePage() {
-  const [activePose] = useState(2);
+  const [activePose] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [camError, setCamError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    const start = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+      } catch (e: any) {
+        setCamError(e?.message ?? "Camera not available");
+      }
+    };
+
+    start();
+
+    return () => {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6 w-3xl">
@@ -32,10 +63,26 @@ export default function CapturePage() {
         </div>
 
         <div className="relative aspect-video bg-[#0f172a]">
-          <div className="absolute left-16 top-20 border-4 border-green-500 rounded-sm w-[320px] h-[240px]" />
-          <div className="absolute left-16 top-14 bg-green-500 text-white px-3 py-1 text-sm font-semibold rounded-md">
-            Pose 3
-          </div>
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ transform: "scaleX(-1)" }}
+          />
+          {!camError && (
+            <>
+              <div className="absolute left-16 top-20 border-4 border-green-500 rounded-sm w-[320px] h-[240px]" />
+              <div className="absolute left-16 top-14 bg-green-500 text-white px-3 py-1 text-sm font-semibold rounded-md">
+                Pose 3
+              </div>
+            </>
+          )}
+          {camError && (
+            <div className="absolute inset-0 grid place-items-center text-sm text-white/80">
+              {camError}
+            </div>
+          )}
         </div>
 
         <div className="border-t px-6 py-5 space-y-3">
@@ -88,7 +135,7 @@ function PoseStep({
       }`}
     >
       <div className="w-20 h-20 relative">
-        <Image src={src} alt={label} fill className={`object-contain invert`} />
+        <Image src={src} alt={label} fill className="object-contain invert" />
       </div>
     </div>
   );
