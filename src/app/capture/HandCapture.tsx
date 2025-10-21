@@ -13,11 +13,13 @@ export default function CapturePage() {
   const [capturing, setCapturing] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [detectEnabled, setDetectEnabled] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const detectorRef = useRef<HandLandmarker | null>(null);
   const rafRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const lastTsRef = useRef(0);
   const [camError, setCamError] = useState<string | null>(null);
 
@@ -29,24 +31,21 @@ export default function CapturePage() {
   const releaseStartRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let stream: MediaStream | null = null;
+    let cancelled = false;
 
     const startCamera = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "user",
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-      } catch (e: any) {
-        setCamError(e?.message ?? "Camera not available");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
       }
     };
 
@@ -62,11 +61,12 @@ export default function CapturePage() {
         numHands: 1,
         runningMode: "VIDEO",
       });
-      loop();
     };
 
     const loop = () => {
+      if (!detectEnabled || cancelled) return;
       rafRef.current = requestAnimationFrame(loop);
+
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const detector = detectorRef.current;
@@ -127,51 +127,87 @@ export default function CapturePage() {
       }
     };
 
-    const nextPose = () => {
-      setActivePose((prev) => {
-        if (prev < 2) return prev + 1;
-        startCountdown();
-        return prev;
-      });
+    const startAll = async () => {
+      try {
+        if (!streamRef.current) await startCamera();
+        if (!detectorRef.current) await startDetector();
+        if (detectEnabled) loop();
+      } catch (e: any) {
+        setCamError(e?.message ?? "Camera not available");
+      }
     };
 
-    const startCountdown = () => {
-      if (capturing) return;
-      setCapturing(true);
-      let count = 3;
-      setCountdown(count);
-
-      const timer = setInterval(() => {
-        count -= 1;
-        if (count >= 0) setCountdown(count);
-        if (count === 0) {
-          clearInterval(timer);
-          capturePhoto();
-        }
-      }, 1000);
-    };
-
-    const capturePhoto = () => {
-      const video = videoRef.current;
-      if (!video) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const img = canvas.toDataURL("image/jpeg");
-      setPhoto(img);
-      setCountdown(null);
-    };
-
-    startCamera().then(startDetector);
+    startAll();
 
     return () => {
+      cancelled = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       detectorRef.current?.close();
-      stream?.getTracks().forEach((t) => t.stop());
+      detectorRef.current = null;
+      const ctx = canvasRef.current?.getContext("2d");
+      if (ctx && canvasRef.current)
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     };
-  }, [activePose, capturing]);
+  }, [detectEnabled, activePose]);
+
+  const nextPose = () => {
+    setActivePose((prev) => {
+      if (prev < 2) return prev + 1;
+      startCountdown();
+      return prev;
+    });
+  };
+
+  const startCountdown = () => {
+    if (capturing) return;
+    setCapturing(true);
+    let count = 3;
+    setCountdown(count);
+    const timer = setInterval(() => {
+      count -= 1;
+      if (count >= 0) setCountdown(count);
+      if (count === 0) {
+        clearInterval(timer);
+        capturePhoto();
+      }
+    }, 1000);
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d")!;
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1); // karena preview dimirror, hasil foto kita mirror balik biar natural
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const img = canvas.toDataURL("image/jpeg");
+    setPhoto(img);
+    setCountdown(null);
+    setDetectEnabled(false); // matikan deteksi setelah foto
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const overlay = canvasRef.current?.getContext("2d");
+    if (overlay && canvasRef.current)
+      overlay.clearRect(
+        0,
+        0,
+        canvasRef.current.width,
+        canvasRef.current.height,
+      );
+  };
+
+  const onRetake = () => {
+    setPhoto(null);
+    setActivePose(0);
+    setCapturing(false);
+    detectedRef.current = false;
+    holdStartRef.current = null;
+    releaseStartRef.current = null;
+    (smoothBox as any)._prev = null;
+    setDetectEnabled(true); // hidupkan lagi deteksi
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
@@ -198,76 +234,74 @@ export default function CapturePage() {
           </button>
         </div>
 
-        <div className="relative aspect-video bg-[#0f172a]">
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ transform: "scaleX(-1)" }}
-          />
-          <canvas ref={canvasRef} className="absolute inset-0" />
-          {countdown !== null && (
-            <div className="absolute inset-0 flex items-center justify-center text-8xl font-bold text-white/90 backdrop-blur-sm">
-              {countdown}
-            </div>
-          )}
-          {photo && (
-            <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center">
-              <img
-                src={photo}
-                alt="Captured"
-                className="max-h-[80%] rounded-lg"
-              />
-              <div className="mt-4 flex gap-3">
-                <button
-                  onClick={() => {
-                    setPhoto(null);
-                    setActivePose(0);
-                    setCapturing(false);
-                  }}
-                  className="px-4 py-2 rounded-md bg-gray-600 text-white"
-                >
-                  Retake
-                </button>
-                <button className="px-4 py-2 rounded-md bg-green-500 text-white">
-                  Submit
-                </button>
+        {!photo ? (
+          <div className="relative aspect-video bg-black">
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ transform: "scaleX(-1)" }}
+            />
+            <canvas ref={canvasRef} className="absolute inset-0" />
+            {countdown !== null && (
+              <div className="absolute inset-0 flex items-center justify-center text-8xl font-bold text-white/90 backdrop-blur-sm">
+                {countdown}
               </div>
-            </div>
-          )}
-          {camError && (
-            <div className="absolute inset-0 grid place-items-center text-sm text-white/80">
-              {camError}
-            </div>
-          )}
-        </div>
-
-        <div className="border-t px-6 py-5 space-y-3">
-          <p className="text-sm text-gray-600">
-            To take a picture, follow the hand poses in the order shown below.
-          </p>
-
-          <div className="flex items-center justify-center gap-3">
-            <PoseStep
-              src="/assets/images/fingers/default/third.png"
-              label="Pose 3"
-              active={activePose === 0}
-            />
-            <Arrow />
-            <PoseStep
-              src="/assets/images/fingers/default/second.png"
-              label="Pose 2"
-              active={activePose === 1}
-            />
-            <Arrow />
-            <PoseStep
-              src="/assets/images/fingers/default/first.png"
-              label="Pose 1"
-              active={activePose === 2}
-            />
+            )}
+            {camError && (
+              <div className="absolute inset-0 grid place-items-center text-sm text-white/80">
+                {camError}
+              </div>
+            )}
           </div>
-        </div>
+        ) : (
+          <div className="bg-white">
+            <img
+              src={photo}
+              alt="Captured"
+              className="w-full object-cover aspect-video"
+            />
+            <div className="flex items-center justify-center gap-3 py-5">
+              <button
+                onClick={onRetake}
+                className="px-4 py-2 rounded-md border border-slate-300 text-slate-800"
+              >
+                Retake photo
+              </button>
+              <button className="px-4 py-2 rounded-md bg-green-700 text-white">
+                Submit
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!photo && (
+          <div className="border-t px-6 py-5 space-y-3">
+            <p className="text-sm text-gray-600">
+              To take a picture, follow the hand poses in the order shown below.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <PoseStep
+                src="/assets/images/fingers/default/third.png"
+                label="Pose 3"
+                active={activePose === 0}
+              />
+              <Arrow />
+              <PoseStep
+                src="/assets/images/fingers/default/second.png"
+                label="Pose 2"
+                active={activePose === 1}
+              />
+              <Arrow />
+              <PoseStep
+                src="/assets/images/fingers/default/first.png"
+                label="Pose 1"
+                active={activePose === 2}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -284,9 +318,7 @@ function PoseStep({
 }) {
   return (
     <div
-      className={`w-24 h-24 flex flex-col items-center justify-center rounded-md border transition-all ${
-        active ? "border-green-500 bg-green-50" : "border-gray-200 bg-gray-50"
-      }`}
+      className={`w-24 h-24 flex flex-col items-center justify-center rounded-md border transition-all ${active ? "border-green-500 bg-green-50" : "border-gray-200 bg-gray-50"}`}
     >
       <div className="w-20 h-20 relative">
         <Image src={src} alt={label} fill className="object-contain invert" />
@@ -358,10 +390,7 @@ function isTwoFingers(lm: Pt[]) {
 }
 
 function isOneFingers(lm: Pt[]) {
-  const distance = (p1: Pt, p2: Pt) => {
-    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-  };
-
+  const distance = (p1: Pt, p2: Pt) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
   const WRIST = 0;
   const INDEX_TIP = 8;
   const MIDDLE_TIP = 12,
@@ -370,22 +399,18 @@ function isOneFingers(lm: Pt[]) {
     RING_MCP = 13;
   const PINKY_TIP = 20,
     PINKY_MCP = 17;
-
   const indexDist = distance(lm[INDEX_TIP], lm[WRIST]);
   const middleDist = distance(lm[MIDDLE_TIP], lm[WRIST]);
   const ringDist = distance(lm[RING_TIP], lm[WRIST]);
   const pinkyDist = distance(lm[PINKY_TIP], lm[WRIST]);
-
   const indexFarthest =
     indexDist > middleDist * 1.1 &&
     indexDist > ringDist * 1.1 &&
     indexDist > pinkyDist * 1.1;
-
   const othersCurled =
     middleDist < distance(lm[MIDDLE_MCP], lm[WRIST]) * 1.3 &&
     ringDist < distance(lm[RING_MCP], lm[WRIST]) * 1.3 &&
     pinkyDist < distance(lm[PINKY_MCP], lm[WRIST]) * 1.3;
-
   return indexFarthest && othersCurled;
 }
 
