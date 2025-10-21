@@ -26,7 +26,7 @@ const ProfileUploader = React.forwardRef<
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4 pt-2">
+    <div className="flex flex-col items-start space-y-4 pt-2">
       <span className="self-start text-sm font-medium text-gray-800 mb-1.5">
         Photo Profile
         <span className="text-red-500 ml-0.5">*</span>
@@ -46,31 +46,17 @@ const ProfileUploader = React.forwardRef<
             className="w-full h-full object-cover"
           />
         ) : (
-          <svg
-            className="w-20 h-20 text-gray-400"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <img
+            src={"/assets/images/default_avatar.png"}
+            alt="Profile Preview"
+            className="w-full h-full object-cover"
+          />
         )}
       </div>
 
       <div className="flex gap-4">
-        <button
-          type="button"
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          <Camera size={16} />
-          Take a Picture
-        </button>
-
         <label className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
-          <Upload size={16} />
+          <Camera size={16} />
           Choose File
           <input
             type="file"

@@ -14,11 +14,11 @@ import DatePicker from "../(input)/DatePicker";
 import PhoneNumber from "../(input)/PhoneNumber";
 import ProvinceAutoComplete from "../(input)/ProvinceAutoComplete";
 
-type ApplyFormProps = {
-  onClose?: () => void;
-};
+interface ApplyFormProps {
+  doClose?: () => void;
+}
 
-const ApplyForm: React.FC = ({ onClose }: ApplyFormProps) => {
+const ApplyForm: React.FC = ({ doClose }: ApplyFormProps) => {
   const {
     register,
     handleSubmit,
@@ -39,11 +39,11 @@ const ApplyForm: React.FC = ({ onClose }: ApplyFormProps) => {
   ];
 
   return (
-    <div className="w-full max-w-lg mx-auto bg-white rounded-lg shadow-xl flex flex-col max-h-[80vh]">
+    <div className="w-2xl mx-auto bg-white rounded-lg shadow-xl flex flex-col max-h-[80vh]">
       <div className="flex-shrink-0 p-6 sm:pb-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={onClose}
+            onClick={doClose}
             className="text-gray-600 hover:text-gray-900 p-1 -ml-1 hover:cursor-pointer"
           >
             <ArrowLeft size={24} />
@@ -52,13 +52,9 @@ const ApplyForm: React.FC = ({ onClose }: ApplyFormProps) => {
             Apply Front End at Rakamin
           </h1>
           <div className="w-6"></div>
-        </div>
-
-        <div className="flex items-center gap-2.5 text-sm text-gray-600 bg-gray-100 p-3 rounded-md">
-          <Info size={18} className="text-blue-600 flex-shrink-0" />
-          <p>
-            <span className="font-semibold">*</span> This field required to fill
-          </p>
+          <div className="flex items-center gap-2.5 text-sm text-gray-500 p-3">
+            <p>ℹ️ This field required to fill</p>
+          </div>
         </div>
       </div>
 

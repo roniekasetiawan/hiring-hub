@@ -20,9 +20,9 @@ export const ApplyFormModal: React.FC<Props> = ({ open, onClose }) => {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative z-50 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg"
+        className="relative z-50 max-h-[90vh] w-full overflow-y-auto rounded-lg"
       >
-        <ApplyForm onClose={onClose} />
+        <ApplyForm doClose={onClose} />
       </div>
     </div>
   );

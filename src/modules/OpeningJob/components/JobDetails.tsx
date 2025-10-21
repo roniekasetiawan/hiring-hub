@@ -3,12 +3,16 @@
 import { Job } from "../types/job";
 import Image from "next/image";
 import { formatSnackLabels } from "@/utility/textUtils";
+import { ApplyFormModal } from "@/components/ApplyForm/ApplyFormModal";
+import * as React from "react";
+import { useState } from "react";
 
 interface JobDetailsProps {
   job: Job | null;
 }
 
 export const JobDetails = ({ job }: JobDetailsProps) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   if (!job) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6">
@@ -43,7 +47,10 @@ export const JobDetails = ({ job }: JobDetailsProps) => {
               <p className="text-sm text-gray-600">{job.name}</p>
             </div>
           </div>
-          <button className="rounded-lg bg-yellow-400 font-bold px-6 py-2 text-sm text-black shadow-sm hover:bg-yellow-500 hover:cursor-pointer">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="rounded-lg bg-yellow-400 font-bold px-6 py-2 text-sm text-black shadow-sm hover:bg-yellow-500 hover:cursor-pointer"
+          >
             Apply
           </button>
         </div>
@@ -56,6 +63,10 @@ export const JobDetails = ({ job }: JobDetailsProps) => {
           <p>{job.description}</p>
         </div>
       </div>
+      <ApplyFormModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 };
