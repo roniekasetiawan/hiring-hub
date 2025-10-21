@@ -1,32 +1,27 @@
 "use client";
 
 import * as React from "react";
-import DateOfBirth from "@/components/(input)/DatePicker";
-import PhoneNumberInput from "@/components/(input)/PhoneNumber";
-import ProvinceAutocomplete from "@/components/(input)/ProvinceAutoComplete";
+import { ApplyFormModal } from "@/components/ApplyForm/ApplyFormModal";
+import { useState } from "react";
 
 export default function Page() {
-  const [phone, setPhone] = React.useState<{
-    country: any;
-    national: string;
-  } | null>(null);
-  const [province, setProvince] = React.useState<any>(null);
-  const [dob, setDob] = React.useState<Date | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   return (
     <main className="max-w-md mx-auto p-6 space-y-6 pt-20">
-      <DateOfBirth value={dob} onChange={setDob} required />
-      <input
-        className="w-full border rounded-xl p-3 mt-30"
-        placeholder="Enter your email address"
-      />
+      <h1 className="text-2xl font-bold">Lowongan Pekerjaan</h1>
+      <p className="mb-8">Ayo gabung bersama kami.</p>
 
-      <PhoneNumberInput
-        required
-        value={phone ?? undefined}
-        onChange={(v) => setPhone(v)}
-      />
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="rounded-lg bg-teal-600 px-5 py-2.5 font-semibold text-white hover:bg-teal-700"
+      >
+        Apply Sekarang
+      </button>
 
-      <ProvinceAutocomplete required onChange={setProvince} />
+      <ApplyFormModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </main>
   );
 }

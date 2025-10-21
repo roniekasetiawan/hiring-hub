@@ -3,39 +3,30 @@
 import * as React from "react";
 import { PROVINCES } from "@/configs/province";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
 
 type Province = (typeof PROVINCES)[number];
 
 type Props = {
-  label?: string;
-  required?: boolean;
   placeholder?: string;
   value?: Province | null;
   onChange?: (p: Province | null) => void;
+  onBlur?: () => void;
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>> | undefined;
   className?: string;
 };
 
 export default function ProvinceAutocomplete({
-  label = "Domicile",
-  required,
   placeholder = "Choose your domicile",
   value,
   onChange,
+  onBlur,
+  error,
   className,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);
-
-  const [selected, setSelected] = React.useState<Province | null>(
-    value ?? null,
-  );
-  React.useEffect(() => {
-    if (value) setSelected(value);
-  }, [value]);
-  React.useEffect(() => {
-    onChange?.(selected);
-  }, [selected, onChange]);
 
   const listRef = React.useRef<HTMLUListElement | null>(null);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -81,7 +72,7 @@ export default function ProvinceAutocomplete({
       e.preventDefault();
       const pick = filtered[active];
       if (pick) {
-        setSelected(pick);
+        onChange?.(pick);
         setOpen(false);
         setQuery("");
       }
@@ -90,19 +81,23 @@ export default function ProvinceAutocomplete({
     }
   }
 
-  return (
-    <div className={className} ref={rootRef} onKeyDown={onKeyDown}>
-      <label className="block text-sm font-medium mb-1">
-        {label}
-        {required ? " *" : ""}
-      </label>
+  const errorClasses = error
+    ? "border-red-500 ring-1 ring-red-500"
+    : "border-gray-300 focus:outline-none focus:ring-1 focus:ring-green-800";
 
+  return (
+    <div
+      className={className}
+      ref={rootRef}
+      onKeyDown={onKeyDown}
+      onBlur={onBlur}
+    >
       <div className="relative">
         <input
           type="text"
           role="combobox"
           aria-expanded={open}
-          placeholder={selected ? selected.label : placeholder}
+          placeholder={value ? value.label : placeholder}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -113,7 +108,7 @@ export default function ProvinceAutocomplete({
           className={[
             "w-full rounded-xl border px-4 py-3 pr-12",
             "text-neutral-900 placeholder:text-black",
-            "border-gray-300 focus:outline-none focus:ring-1 focus:ring-green-800",
+            errorClasses,
           ].join(" ")}
         />
         <button
@@ -133,7 +128,7 @@ export default function ProvinceAutocomplete({
               role="listbox"
             >
               {filtered.map((p, idx) => {
-                const isSel = selected?.value === p.value;
+                const isSel = value?.value === p.value;
                 const isActive = idx === active;
                 return (
                   <li key={p.value}>
@@ -144,7 +139,7 @@ export default function ProvinceAutocomplete({
                       aria-selected={isSel}
                       onMouseEnter={() => setActive(idx)}
                       onClick={() => {
-                        setSelected(p);
+                        onChange?.(p);
                         setOpen(false);
                         setQuery("");
                       }}

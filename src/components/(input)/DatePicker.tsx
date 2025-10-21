@@ -7,14 +7,21 @@ import "react-day-picker/dist/style.css";
 import { id as idLocale } from "date-fns/locale";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
 
 type Props = {
   value?: Date | null;
   onChange?: (d: Date | null) => void;
-  required?: boolean;
+  onBlur?: () => void;
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>> | undefined;
 };
 
-export default function DobPickerTight({ value, onChange, required }: Props) {
+export default function DobPickerTight({
+  value,
+  onChange,
+  onBlur,
+  error,
+}: Props) {
   const [open, setOpen] = React.useState(false);
   const initial = value ?? new Date(2001, 0, 1);
   const [month, setMonth] = React.useState<Date>(initial);
@@ -31,16 +38,19 @@ export default function DobPickerTight({ value, onChange, required }: Props) {
   const nextYear = () =>
     setMonth(new Date(month.getFullYear() + 1, month.getMonth(), 1));
 
+  const errorClasses = error
+    ? "border-red-500 focus:ring-red-500"
+    : "border-neutral-300 hover:border-neutral-400 focus:ring-green-500";
+
   return (
     <div className="relative">
-      <label className="block text-sm font-medium mb-1">
-        Date of birth{required ? " *" : ""}
-      </label>
-
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full relative flex items-center gap-2 rounded-xl border border-neutral-300  px-3 py-3 pr-11 text-left hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+        onBlur={onBlur}
+        className={`w-full relative flex items-center gap-2 rounded-xl border px-3 py-3 pr-11 text-left
+                   focus:outline-none focus:ring-2 
+                   ${errorClasses}`}
       >
         <CalendarMonthIcon sx={{ color: "black" }} />
         <span className={value ? "text-neutral-900" : "text-neutral-400"}>
@@ -67,7 +77,6 @@ export default function DobPickerTight({ value, onChange, required }: Props) {
                 ‹
               </HeaderBtn>
             </div>
-
             <div className="flex items-baseline gap-3">
               <span className="text-sm font-semibold tracking-wide text-black">
                 {format(month, "MMM")}
@@ -76,7 +85,6 @@ export default function DobPickerTight({ value, onChange, required }: Props) {
                 {format(month, "yyyy")}
               </span>
             </div>
-
             <div className="flex items-center gap-1">
               <HeaderBtn aria="Next month" onClick={nextMonth}>
                 ›
@@ -86,7 +94,6 @@ export default function DobPickerTight({ value, onChange, required }: Props) {
               </HeaderBtn>
             </div>
           </div>
-
           <DayPicker
             mode="single"
             month={month}

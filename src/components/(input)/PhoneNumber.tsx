@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import SearchIcon from "@mui/icons-material/Search";
+import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
 
 type Country = {
   code: string;
@@ -26,19 +27,19 @@ const MOCK_COUNTRIES: Country[] = [
 ];
 
 type Props = {
-  label?: string;
-  required?: boolean;
   value?: { country: Country; national: string } | null;
   onChange?: (v: { country: Country; national: string }) => void;
+  onBlur?: () => void;
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>> | undefined;
   placeholder?: string;
   className?: string;
 };
 
 export default function PhoneNumberInput({
-  label = "Phone number",
-  required,
   value,
   onChange,
+  onBlur,
+  error,
   placeholder = "81XXXXXXXXX",
   className,
 }: Props) {
@@ -47,14 +48,16 @@ export default function PhoneNumberInput({
 
   const defaultCountry =
     MOCK_COUNTRIES.find((c) => c.code === "ID") ?? MOCK_COUNTRIES[0];
-  const [country, setCountry] = React.useState<Country>(
-    value?.country ?? defaultCountry,
-  );
-  const [national, setNational] = React.useState<string>(value?.national ?? "");
 
-  React.useEffect(() => {
-    onChange?.({ country, national });
-  }, [country, national]);
+  const country = value?.country ?? defaultCountry;
+  const national = value?.national ?? "";
+
+  const setCountry = (newCountry: Country) => {
+    onChange?.({ country: newCountry, national });
+  };
+  const setNational = (newNational: string) => {
+    onChange?.({ country, national: newNational });
+  };
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -101,14 +104,20 @@ export default function PhoneNumberInput({
     }
   }
 
-  return (
-    <div className={className} ref={containerRef} onKeyDown={handleKeyDown}>
-      <label className="block text-sm font-medium mb-1">
-        {label}
-        {required ? " *" : ""}
-      </label>
+  const errorClasses = error
+    ? "border-red-500 ring-1 ring-red-500"
+    : "border-neutral-300 focus-within:ring-1 focus-within:ring-green-800";
 
-      <div className="flex focus-within:ring-1 focus-within:ring-green-800 items-center gap-2 rounded-lg border border-neutral-300  px-2 py-1 hover:border-neutral-400 ">
+  return (
+    <div
+      className={className}
+      ref={containerRef}
+      onKeyDown={handleKeyDown}
+      onBlur={onBlur}
+    >
+      <div
+        className={`flex items-center gap-2 rounded-lg border px-2 py-1 hover:border-neutral-400 ${errorClasses}`}
+      >
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -127,7 +136,7 @@ export default function PhoneNumberInput({
         <input
           type="tel"
           inputMode="numeric"
-          placeholder="81XXXXXXXXXX"
+          placeholder={placeholder}
           value={national}
           onChange={(e) => {
             const raw = e.target.value.replace(/[^\d\s]/g, "");
