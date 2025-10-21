@@ -17,13 +17,16 @@ import ProvinceAutoComplete from "../(input)/ProvinceAutoComplete";
 import CaptureModal from "@/app/capture/HandCapture";
 import Portal from "@/components/Portal";
 import { useRouter } from "next/navigation";
+import { Job } from "@/modules/OpeningJob/types/job";
 
 interface ApplyFormProps {
   doClose?: () => void;
+  job: Job;
 }
 
-const ApplyForm: React.FC = ({ doClose }: ApplyFormProps) => {
+const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const {
     register,
     handleSubmit,
@@ -36,13 +39,47 @@ const ApplyForm: React.FC = ({ doClose }: ApplyFormProps) => {
 
   const [isCaptureOpen, setCaptureOpen] = useState(false);
 
-  const onSubmit: SubmitHandler<ApplyFormData> = (data) => {
-    console.log("Form data:", data);
-    router.push("/success-apply");
+  const onSubmit: SubmitHandler<ApplyFormData> = async (data) => {
+    setIsSubmitting(true);
+
+    const formData = new FormData();
+
+    formData.append("jobId", job.id);
+    formData.append("fullName", data.fullName);
+    formData.append("dateOfBirth", data.dateOfBirth.toDateString());
+    formData.append("pronoun", data.pronoun);
+    formData.append("domicile", JSON.stringify(data.domicile));
+    formData.append("phoneNumber", JSON.stringify(data.phoneNumber));
+    formData.append("email", data.email);
+    formData.append("linkedin", data.linkedin);
+
+    if (data.photoProfile) {
+      formData.append("photoProfile", data.photoProfile);
+    }
+
+    try {
+      const response = await fetch("/api/apply", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to submit application");
+      }
+
+      router.push("/success-apply");
+    } catch (error: any) {
+      console.error("Submission failed:", error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePhotoSubmit = (imgData: string) => {
     const file = base64toFile(imgData, "profile-photo.jpg");
+    // @ts-ignore
     setValue("photoProfile", file, {
       shouldValidate: true,
       shouldDirty: true,
@@ -193,7 +230,7 @@ const ApplyForm: React.FC = ({ doClose }: ApplyFormProps) => {
                      py-3 px-4 rounded-lg transition-colors duration-200
                      focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
           >
-            Submit
+            {isSubmitting ? "Submitting" : "Submit"}
           </button>
         </div>
       </div>

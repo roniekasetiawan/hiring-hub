@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, FC } from "react";
+import React, { FC } from "react";
 
 interface Candidate {
-  id: number;
+  id: string;
   namaLengkap: string;
   emailAddress: string;
   phoneNumbers: string;
@@ -18,102 +18,6 @@ interface SortConfig {
   key: keyof Candidate;
   direction: SortDirection;
 }
-
-const useCandidateTable = (
-  candidates: Candidate[],
-  itemsPerPage: number = 10,
-) => {
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filter, setFilter] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-
-  const filteredCandidates = useMemo(() => {
-    if (!filter) return candidates;
-    return candidates.filter((candidate) =>
-      Object.values(candidate).some((value) =>
-        String(value).toLowerCase().includes(filter.toLowerCase()),
-      ),
-    );
-  }, [candidates, filter]);
-
-  const sortedCandidates = useMemo(() => {
-    let sortableItems = [...filteredCandidates];
-    if (sortConfig !== null) {
-      sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === "ascending" ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === "ascending" ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-    return sortableItems;
-  }, [filteredCandidates, sortConfig]);
-
-  const paginatedCandidates = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return sortedCandidates.slice(startIndex, startIndex + itemsPerPage);
-  }, [sortedCandidates, currentPage, itemsPerPage]);
-
-  const requestSort = (key: keyof Candidate) => {
-    let direction: SortDirection = "ascending";
-    if (
-      sortConfig &&
-      sortConfig.key === key &&
-      sortConfig.direction === "ascending"
-    ) {
-      direction = "descending";
-    }
-    setSortConfig({ key, direction });
-    setCurrentPage(1);
-  };
-
-  const handleFilterChange = (value: string) => {
-    setFilter(value);
-    setCurrentPage(1);
-  };
-
-  const totalPages = Math.ceil(sortedCandidates.length / itemsPerPage);
-
-  const handleSelect = (id: number) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (
-      selectedIds.size === paginatedCandidates.length &&
-      paginatedCandidates.length > 0
-    ) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(paginatedCandidates.map((c) => c.id)));
-    }
-  };
-
-  return {
-    paginatedCandidates,
-    requestSort,
-    sortConfig,
-    setFilter: handleFilterChange,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    selectedIds,
-    handleSelect,
-    handleSelectAll,
-  };
-};
 
 const TableHeader: FC<{
   columns: { key: keyof Candidate; label: string }[];
@@ -154,7 +58,7 @@ const TableHeader: FC<{
 
 const TableRow: FC<{
   candidate: Candidate;
-  onSelect: (id: number) => void;
+  onSelect: (id: string) => void;
   isSelected: boolean;
 }> = ({ candidate, onSelect, isSelected }) => (
   <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
@@ -213,26 +117,35 @@ const Pagination: FC<{
   );
 };
 
-const CandidateTable = ({
-  mockCandidates,
-  paginateBy = 5,
-}: {
-  mockCandidates: any;
-  paginateBy?: number;
-}) => {
-  const {
-    paginatedCandidates,
-    requestSort,
-    sortConfig,
-    setFilter,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    selectedIds,
-    handleSelect,
-    handleSelectAll,
-  } = useCandidateTable(mockCandidates, paginateBy);
+interface CandidateTableProps {
+  candidates: Candidate[];
+  isLoading: boolean;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onFilterChange: (value: string) => void;
+  sortConfig: SortConfig | null;
+  onRequestSort: (key: keyof Candidate) => void;
+  selectedIds: Set<string>;
+  onSelect: (id: string) => void;
+  onSelectAll: () => void;
+  filterValue: string;
+}
 
+const CandidateTable: FC<CandidateTableProps> = ({
+  candidates,
+  isLoading,
+  currentPage,
+  totalPages,
+  onPageChange,
+  onFilterChange,
+  sortConfig,
+  onRequestSort,
+  selectedIds,
+  onSelect,
+  onSelectAll,
+  filterValue,
+}) => {
   const columns: { key: keyof Candidate; label: string }[] = [
     { key: "namaLengkap", label: "Nama Lengkap" },
     { key: "emailAddress", label: "Email Address" },
@@ -243,42 +156,60 @@ const CandidateTable = ({
     { key: "linkLinkedin", label: "Link Linkedin" },
   ];
 
+  const isAllSelected =
+    candidates.length > 0 && selectedIds.size === candidates.length;
+
   return (
     <div className="overflow-hidden rounded-xl bg-white p-4 shadow-md">
       <input
         type="text"
         placeholder="Cari kandidat..."
-        onChange={(e) => setFilter(e.target.value)}
+        value={filterValue}
+        onChange={(e) => onFilterChange(e.target.value)}
         className="mb-4 w-full text-black rounded-md border-gray-300 px-4 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500"
       />
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <TableHeader
             columns={columns}
-            requestSort={requestSort}
+            requestSort={onRequestSort}
             sortConfig={sortConfig}
-            onSelectAll={handleSelectAll}
-            isAllSelected={
-              selectedIds.size === paginatedCandidates.length &&
-              paginatedCandidates.length > 0
-            }
+            onSelectAll={onSelectAll}
+            isAllSelected={isAllSelected}
           />
           <tbody className="divide-y divide-gray-200">
-            {paginatedCandidates.map((candidate) => (
-              <TableRow
-                key={candidate.id}
-                candidate={candidate}
-                onSelect={handleSelect}
-                isSelected={selectedIds.has(candidate.id)}
-              />
-            ))}
+            {isLoading ? (
+              <tr>
+                <td colSpan={columns.length + 1} className="p-4 text-center">
+                  Loading candidates...
+                </td>
+              </tr>
+            ) : candidates.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length + 1}
+                  className="p-4 text-center text-black"
+                >
+                  No candidates found for this search.
+                </td>
+              </tr>
+            ) : (
+              candidates.map((candidate) => (
+                <TableRow
+                  key={candidate.id}
+                  candidate={candidate}
+                  onSelect={onSelect}
+                  isSelected={selectedIds.has(candidate.id)}
+                />
+              ))
+            )}
           </tbody>
         </table>
       </div>
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
-        onPageChange={setCurrentPage}
+        onPageChange={onPageChange}
       />
     </div>
   );

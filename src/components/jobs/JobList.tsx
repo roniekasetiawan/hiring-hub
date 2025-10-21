@@ -51,7 +51,7 @@ const JobCard: FC<{ job: Job }> = ({ job }) => {
           </p>
         </div>
         <div className="flex-shrink-0">
-          <Link href="/list-candidate">
+          <Link href={`/list-candidate?jobId=${job.id}`}>
             <button className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">
               Manage Job
             </button>

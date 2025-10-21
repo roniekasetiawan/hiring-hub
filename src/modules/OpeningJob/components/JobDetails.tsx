@@ -65,6 +65,7 @@ export const JobDetails = ({ job }: JobDetailsProps) => {
       </div>
       <ApplyFormModal
         open={isModalOpen}
+        job={job}
         onClose={() => setIsModalOpen(false)}
       />
     </div>

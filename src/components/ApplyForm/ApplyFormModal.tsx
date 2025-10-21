@@ -2,13 +2,15 @@
 
 import React from "react";
 import ApplyForm from "./ApplyForm";
+import { Job } from "@/modules/OpeningJob/types/job";
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  job: Job;
 };
 
-export const ApplyFormModal: React.FC<Props> = ({ open, onClose }) => {
+export const ApplyFormModal: React.FC<Props> = ({ open, onClose, job }) => {
   if (!open) {
     return null;
   }
@@ -22,7 +24,7 @@ export const ApplyFormModal: React.FC<Props> = ({ open, onClose }) => {
         onClick={(e) => e.stopPropagation()}
         className="relative z-50 max-h-[90vh] w-full overflow-y-auto rounded-lg"
       >
-        <ApplyForm doClose={onClose} />
+        <ApplyForm doClose={onClose} job={job} />
       </div>
     </div>
   );
