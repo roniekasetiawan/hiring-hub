@@ -9,7 +9,11 @@ import {
 } from "@mediapipe/tasks-vision";
 
 export default function CapturePage() {
-  const [activePose] = useState(0);
+  const [activePose, setActivePose] = useState(0);
+  const [capturing, setCapturing] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const detectorRef = useRef<HandLandmarker | null>(null);
@@ -17,12 +21,12 @@ export default function CapturePage() {
   const lastTsRef = useRef(0);
   const [camError, setCamError] = useState<string | null>(null);
 
+  const HOLD_MS = 600;
+  const RELEASE_MS = 150;
+
   const detectedRef = useRef(false);
-  const [detected, setDetected] = useState(false);
   const holdStartRef = useRef<number | null>(null);
   const releaseStartRef = useRef<number | null>(null);
-  const HOLD_MS = 650;
-  const RELEASE_MS = 180;
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -85,17 +89,20 @@ export default function CapturePage() {
 
       if (hands.length) {
         const lm = hands[0];
-
         const bbox = computeBBox(canvas, lm);
         const sbox = smoothBox(bbox);
-        const okRaw = isTwoFingers(lm);
+
+        let okRaw = false;
+        if (activePose === 0) okRaw = isThreeFingers(lm);
+        else if (activePose === 1) okRaw = isTwoFingers(lm);
+        else if (activePose === 2) okRaw = isOneFingers(lm);
 
         if (okRaw) {
           if (holdStartRef.current === null) holdStartRef.current = now;
           releaseStartRef.current = null;
           if (!detectedRef.current && now - holdStartRef.current >= HOLD_MS) {
             detectedRef.current = true;
-            setDetected(true);
+            nextPose();
           }
         } else {
           holdStartRef.current = null;
@@ -105,26 +112,56 @@ export default function CapturePage() {
             now - releaseStartRef.current >= RELEASE_MS
           ) {
             detectedRef.current = false;
-            setDetected(false);
           }
         }
 
-        drawBoxAndLabel(ctx, sbox, detectedRef.current);
+        drawBoxAndLabel(
+          ctx,
+          sbox,
+          detectedRef.current,
+          `Pose ${activePose + 1}`,
+        );
         const drawing = new DrawingUtils(ctx);
         drawing.drawLandmarks(lm, { radius: 2 });
         drawing.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS);
-      } else {
-        holdStartRef.current = null;
-        if (!releaseStartRef.current)
-          releaseStartRef.current = performance.now();
-        if (
-          detectedRef.current &&
-          performance.now() - releaseStartRef.current >= RELEASE_MS
-        ) {
-          detectedRef.current = false;
-          setDetected(false);
-        }
       }
+    };
+
+    const nextPose = () => {
+      setActivePose((prev) => {
+        if (prev < 2) return prev + 1;
+        startCountdown();
+        return prev;
+      });
+    };
+
+    const startCountdown = () => {
+      if (capturing) return;
+      setCapturing(true);
+      let count = 3;
+      setCountdown(count);
+
+      const timer = setInterval(() => {
+        count -= 1;
+        if (count >= 0) setCountdown(count);
+        if (count === 0) {
+          clearInterval(timer);
+          capturePhoto();
+        }
+      }, 1000);
+    };
+
+    const capturePhoto = () => {
+      const video = videoRef.current;
+      if (!video) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const img = canvas.toDataURL("image/jpeg");
+      setPhoto(img);
+      setCountdown(null);
     };
 
     startCamera().then(startDetector);
@@ -134,7 +171,7 @@ export default function CapturePage() {
       detectorRef.current?.close();
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [activePose, capturing]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
@@ -170,6 +207,35 @@ export default function CapturePage() {
             style={{ transform: "scaleX(-1)" }}
           />
           <canvas ref={canvasRef} className="absolute inset-0" />
+          {countdown !== null && (
+            <div className="absolute inset-0 flex items-center justify-center text-8xl font-bold text-white/90 backdrop-blur-sm">
+              {countdown}
+            </div>
+          )}
+          {photo && (
+            <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center">
+              <img
+                src={photo}
+                alt="Captured"
+                className="max-h-[80%] rounded-lg"
+              />
+              <div className="mt-4 flex gap-3">
+                <button
+                  onClick={() => {
+                    setPhoto(null);
+                    setActivePose(0);
+                    setCapturing(false);
+                  }}
+                  className="px-4 py-2 rounded-md bg-gray-600 text-white"
+                >
+                  Retake
+                </button>
+                <button className="px-4 py-2 rounded-md bg-green-500 text-white">
+                  Submit
+                </button>
+              </div>
+            </div>
+          )}
           {camError && (
             <div className="absolute inset-0 grid place-items-center text-sm text-white/80">
               {camError}
@@ -180,8 +246,6 @@ export default function CapturePage() {
         <div className="border-t px-6 py-5 space-y-3">
           <p className="text-sm text-gray-600">
             To take a picture, follow the hand poses in the order shown below.
-            The system will automatically capture the image once the final pose
-            is detected.
           </p>
 
           <div className="flex items-center justify-center gap-3">
@@ -220,7 +284,9 @@ function PoseStep({
 }) {
   return (
     <div
-      className={`w-24 h-24 flex flex-col items-center justify-center rounded-md border transition-all ${active ? "border-green-500 bg-green-50" : "border-gray-200 bg-gray-50"}`}
+      className={`w-24 h-24 flex flex-col items-center justify-center rounded-md border transition-all ${
+        active ? "border-green-500 bg-green-50" : "border-gray-200 bg-gray-50"
+      }`}
     >
       <div className="w-20 h-20 relative">
         <Image src={src} alt={label} fill className="object-contain invert" />
@@ -257,22 +323,15 @@ function isThreeFingers(lm: Pt[]) {
   const TIPS = [4, 8, 12, 16, 20];
   const PIPS = [3, 6, 10, 14, 18];
   const MCPS = [2, 5, 9, 13, 17];
-
   const indexUp = lm[TIPS[1]].y < lm[PIPS[1]].y;
   const middleUp = lm[TIPS[2]].y < lm[PIPS[2]].y;
   const ringUp = lm[TIPS[3]].y < lm[PIPS[3]].y;
-
   const pinkyDown = lm[TIPS[4]].y > lm[PIPS[4]].y;
   const thumbTucked = lm[TIPS[0]].y > lm[MCPS[1]].y;
-
   return indexUp && middleUp && ringUp && pinkyDown && thumbTucked;
 }
 
 function isTwoFingers(lm: Pt[]) {
-  const distance = (p1: any, p2: any) => {
-    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-  };
-
   const WRIST = 0;
   const INDEX_TIP = 8,
     INDEX_PIP = 6;
@@ -282,48 +341,52 @@ function isTwoFingers(lm: Pt[]) {
     RING_MCP = 13;
   const PINKY_TIP = 20,
     PINKY_MCP = 17;
-
-  const indexDist = distance(lm[INDEX_TIP], lm[WRIST]);
-  const indexPipDist = distance(lm[INDEX_PIP], lm[WRIST]);
-  const indexExtended = indexDist > indexPipDist * 1.02;
-
-  const middleDist = distance(lm[MIDDLE_TIP], lm[WRIST]);
-  const middlePipDist = distance(lm[MIDDLE_PIP], lm[WRIST]);
-  const middleExtended = middleDist > middlePipDist * 1.02;
-
-  const ringDist = distance(lm[RING_TIP], lm[WRIST]);
-  const ringMcpDist = distance(lm[RING_MCP], lm[WRIST]);
-  const ringCurled = ringDist < ringMcpDist * 1.15;
-
-  const pinkyDist = distance(lm[PINKY_TIP], lm[WRIST]);
-  const pinkyMcpDist = distance(lm[PINKY_MCP], lm[WRIST]);
-  const pinkyCurled = pinkyDist < pinkyMcpDist * 1.15;
-
+  const distance = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
+  const indexExtended =
+    distance(lm[INDEX_TIP], lm[WRIST]) >
+    distance(lm[INDEX_PIP], lm[WRIST]) * 1.05;
+  const middleExtended =
+    distance(lm[MIDDLE_TIP], lm[WRIST]) >
+    distance(lm[MIDDLE_PIP], lm[WRIST]) * 1.05;
+  const ringCurled =
+    distance(lm[RING_TIP], lm[WRIST]) <
+    distance(lm[RING_MCP], lm[WRIST]) * 1.15;
+  const pinkyCurled =
+    distance(lm[PINKY_TIP], lm[WRIST]) <
+    distance(lm[PINKY_MCP], lm[WRIST]) * 1.15;
   return indexExtended && middleExtended && ringCurled && pinkyCurled;
 }
 
 function isOneFingers(lm: Pt[]) {
-  const TIPS = [4, 8, 12, 16, 20];
-  const PIPS = [3, 6, 10, 14, 18];
-  const MCPS = [2, 5, 9, 13, 17];
+  const distance = (p1: Pt, p2: Pt) => {
+    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+  };
 
-  const indexUp = lm[TIPS[1]].y < lm[PIPS[1]].y;
+  const WRIST = 0;
+  const INDEX_TIP = 8;
+  const MIDDLE_TIP = 12,
+    MIDDLE_MCP = 9;
+  const RING_TIP = 16,
+    RING_MCP = 13;
+  const PINKY_TIP = 20,
+    PINKY_MCP = 17;
 
-  const middleDown = lm[TIPS[2]].y > lm[PIPS[2]].y;
-  const ringDown = lm[TIPS[3]].y > lm[PIPS[3]].y;
-  const pinkyDown = lm[TIPS[4]].y > lm[PIPS[4]].y;
+  const indexDist = distance(lm[INDEX_TIP], lm[WRIST]);
+  const middleDist = distance(lm[MIDDLE_TIP], lm[WRIST]);
+  const ringDist = distance(lm[RING_TIP], lm[WRIST]);
+  const pinkyDist = distance(lm[PINKY_TIP], lm[WRIST]);
 
-  const thumbTipX = lm[TIPS[0]].x;
-  const indexMcpX = lm[MCPS[1]].x;
-  const pinkyMcpX = lm[MCPS[4]].x;
+  const indexFarthest =
+    indexDist > middleDist * 1.1 &&
+    indexDist > ringDist * 1.1 &&
+    indexDist > pinkyDist * 1.1;
 
-  const thumbTuckedX = (thumbTipX - indexMcpX) * (thumbTipX - pinkyMcpX) < 0;
+  const othersCurled =
+    middleDist < distance(lm[MIDDLE_MCP], lm[WRIST]) * 1.3 &&
+    ringDist < distance(lm[RING_MCP], lm[WRIST]) * 1.3 &&
+    pinkyDist < distance(lm[PINKY_MCP], lm[WRIST]) * 1.3;
 
-  const thumbTuckedY = lm[TIPS[0]].y > lm[PIPS[0]].y;
-
-  const thumbTucked = thumbTuckedX && thumbTuckedY;
-
-  return indexUp && middleDown && ringDown && pinkyDown && thumbTucked;
+  return indexFarthest && othersCurled;
 }
 
 function computeBBox(canvas: HTMLCanvasElement, lm: Pt[]): BBox {
@@ -361,12 +424,15 @@ function smoothBox(b: BBox): BBox {
   return sb;
 }
 
-function drawBoxAndLabel(ctx: CanvasRenderingContext2D, b: BBox, ok: boolean) {
+function drawBoxAndLabel(
+  ctx: CanvasRenderingContext2D,
+  b: BBox,
+  ok: boolean,
+  label: string,
+) {
   ctx.lineWidth = 5;
   ctx.strokeStyle = ok ? "#22c55e" : "#ef4444";
   ctx.strokeRect(b.x, b.y, b.w, b.h);
-
-  const label = ok ? "Pose 3" : "Undetected";
   ctx.font = "13px system-ui, -apple-system, Segoe UI, Roboto";
   const lw = ctx.measureText(label).width + 12;
   const lh = 22;
