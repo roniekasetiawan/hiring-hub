@@ -1,12 +1,22 @@
-export default function base64toFile(base64: string, filename: string): File {
-  const arr = base64.split(",");
-  // @ts-ignore
-  const mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
+export default function base64toFile(
+  base64: string,
+  filename: string,
+  mime = "image/jpeg",
+): Blob | File {
+  const [header, data] = base64.split(",");
+  if (!data) throw new Error("Invalid base64");
+
+  const hasFileCtor =
+    typeof globalThis !== "undefined" &&
+    typeof (globalThis as any).File !== "undefined";
+  const bin =
+    typeof window !== "undefined"
+      ? Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
+      : Uint8Array.from(Buffer.from(data, "base64"));
+
+  if (hasFileCtor) {
+    return new File([bin], filename, { type: mime });
   }
-  return new File([u8arr], filename, { type: mime });
+
+  return new Blob([bin], { type: mime });
 }

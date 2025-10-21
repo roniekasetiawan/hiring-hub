@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { File as NodeFile } from "undici";
+const FileCtor: any = (globalThis as any).File ?? NodeFile;
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = [
@@ -20,12 +22,9 @@ const PhoneSchema = z.object({
 
 export const ApplyFormSchema = z.object({
   photoProfile: z
-    .instanceof(File, { message: "Required" })
-    .refine((file) => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
-    .refine(
-      (file) => ACCEPTED_IMAGE_TYPES.includes(file.type),
-      "Only .jpg, .jpeg, .png and .webp formats are supported.",
-    ),
+    .instanceof(FileCtor, { message: "Required" })
+    .refine((f) => f.size <= MAX_FILE_SIZE, "Max 5MB")
+    .refine((f) => ACCEPTED_IMAGE_TYPES.includes(f.type), "Only jpg/png/webp"),
   fullName: z.string().min(1, "Required"),
   dateOfBirth: z.date({
     error: "Required",
