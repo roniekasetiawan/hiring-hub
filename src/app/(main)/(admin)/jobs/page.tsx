@@ -7,6 +7,7 @@ import JobOpeningModal from "@/components/jobs/CreateJobModal";
 import { useState } from "react";
 import PageID from "@/@core/components/PageID";
 import useSWR from "swr";
+import useDebounce from "@/hooks/useDebounce";
 
 type JobStatus = "Active" | "Inactive" | "Draft";
 
@@ -24,7 +25,13 @@ const fetcher = (url: string) =>
 
 export default function JobListPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const { data, isLoading } = useSWR<{ data: Jobs[] }>("/api/jobs", fetcher);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const apiUrl = debouncedSearchTerm
+    ? `/api/jobs?title=${encodeURIComponent(debouncedSearchTerm)}`
+    : "/api/jobs";
+  const { data, isLoading } = useSWR<{ data: Jobs[] }>(apiUrl, fetcher);
 
   const jobs = data?.data ?? [];
 
@@ -44,14 +51,10 @@ export default function JobListPage() {
       path="/config/manage-menu"
       breadcrumbs={{
         title: "Management Menu",
-        routes: [
-          { label: "Konfigurasi" },
-          { label: "Management Menu", href: "/config/manage-menu" },
-          { label: "Detail Menu" },
-        ],
+        routes: [{ label: "Job List" }],
       }}
     >
-      <div className="flex gap-6 ">
+      <div className="flex gap-6 mt-20">
         <div className="flex-1">
           <div className="w-full">
             <label htmlFor="search" className="sr-only">
@@ -63,7 +66,9 @@ export default function JobListPage() {
                 type="text"
                 id="search"
                 placeholder="Search by job details"
-                className="w-full rounded-lg border-gray-200 bg-white p-4 pe-12 text-sm shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className="w-full rounded-lg text-black border-gray-200 bg-white p-4 pe-12 text-sm shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
 
               <span className="absolute inset-y-0 end-0 grid w-16 place-content-center">

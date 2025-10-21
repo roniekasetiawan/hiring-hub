@@ -1,6 +1,7 @@
 import PageID from "@/@core/components/PageID";
 import CandidateTable from "@/components/(data-display)/table";
 import { Typography } from "@mui/material";
+import EmptyState from "@/app/(main)/(admin)/list-candidate/EmptyState";
 
 interface Candidate {
   id: number;
@@ -144,16 +145,23 @@ export default function JobListPage() {
       breadcrumbs={{
         title: "Management Menu",
         routes: [
-          { label: "Konfigurasi" },
-          { label: "Management Menu", href: "/config/manage-menu" },
-          { label: "Detail Menu" },
+          { label: "Joblist", href: "/jobs" },
+          { label: "Manage Candidates" },
         ],
       }}
     >
       <Typography variant="h3" color="black" mb={3}>
         Front End Developer
       </Typography>
-      <CandidateTable mockCandidates={mockCandidates} paginateBy={10} />
+      {true ? (
+        <EmptyState
+          title="No candidates found"
+          subtitle="Share your job vacancies so that more candidates will apply."
+          imageSrc="/assets/images/empty_job.svg"
+        />
+      ) : (
+        <CandidateTable mockCandidates={mockCandidates} paginateBy={10} />
+      )}
     </PageID>
   );
 }

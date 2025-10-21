@@ -10,8 +10,6 @@ export async function POST(req: NextRequest) {
   return safe(async () => {
     const user = await getServerUser();
 
-    console.log("USER FROM JWT:", user);
-
     if (!user || !user.id || !user.role) {
       return error(null, 401, "You must be logged in to create a job.");
     }
@@ -52,12 +50,19 @@ export async function GET(req: NextRequest) {
   return safe(async () => {
     const user = await getServerUser();
 
+    const { searchParams } = req.nextUrl;
+    const title = searchParams.get("title");
+
     let query = supabase.from("jobs").select("*");
 
     if (user && ["admin", "recruiter"].includes(user.role as string)) {
       query = query.eq("created_by_user_id", user.id);
     } else {
       query = query.eq("status", "active");
+    }
+
+    if (title) {
+      query = query.ilike("title", `%${title}%`);
     }
 
     const { data: jobsFromDb, error: dbErr } = await query.order("created_at", {
