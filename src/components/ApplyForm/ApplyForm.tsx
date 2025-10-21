@@ -16,12 +16,14 @@ import PhoneNumber from "../(input)/PhoneNumber";
 import ProvinceAutoComplete from "../(input)/ProvinceAutoComplete";
 import CaptureModal from "@/app/capture/HandCapture";
 import Portal from "@/components/Portal";
+import { useRouter } from "next/navigation";
 
 interface ApplyFormProps {
   doClose?: () => void;
 }
 
 const ApplyForm: React.FC = ({ doClose }: ApplyFormProps) => {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -36,7 +38,7 @@ const ApplyForm: React.FC = ({ doClose }: ApplyFormProps) => {
 
   const onSubmit: SubmitHandler<ApplyFormData> = (data) => {
     console.log("Form data:", data);
-    alert("Form submitted successfully!");
+    router.push("/success-apply");
   };
 
   const handlePhotoSubmit = (imgData: string) => {
