@@ -90,13 +90,13 @@ export default function RegisterPage() {
                 value="applicant"
                 sx={{ textTransform: "none", flexGrow: 1 }}
               >
-                Pencari Kerja
+                Applicant
               </ToggleButton>
               <ToggleButton
                 value="admin"
                 sx={{ textTransform: "none", flexGrow: 1 }}
               >
-                Pemberi Kerja
+                Recruiter
               </ToggleButton>
             </ToggleButtonGroup>
           )}
@@ -105,7 +105,7 @@ export default function RegisterPage() {
         <TextField
           {...register("full_name")}
           error={!!errors.full_name}
-          placeholder="Full Name (Optional)"
+          placeholder="Full Name"
           helperText={errors.full_name?.message}
           InputProps={{
             startAdornment: (
