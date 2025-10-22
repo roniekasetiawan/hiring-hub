@@ -134,9 +134,6 @@ export default function CaptureModal({
           detectedRef.current,
           `Pose ${activePose + 1}`,
         );
-        const drawing = new DrawingUtils(ctx);
-        drawing.drawLandmarks(lm, { radius: 2 });
-        drawing.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS);
       }
     };
 
@@ -270,7 +267,11 @@ export default function CaptureModal({
               className="absolute inset-0 h-full w-full object-cover"
               style={{ transform: "scaleX(-1)" }}
             />
-            <canvas ref={canvasRef} className="absolute inset-0" />
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 h-full w-full object-cover pointer-events-none"
+              style={{ transform: "scaleX(-1)" }}
+            />
             {countdown !== null && (
               <div className="absolute inset-0 flex items-center justify-center text-8xl font-bold text-white/90 backdrop-blur-sm">
                 {countdown}
@@ -447,13 +448,16 @@ function computeBBox(canvas: HTMLCanvasElement, lm: Pt[]): BBox {
     minY = 1,
     maxX = 0,
     maxY = 0;
+
   for (const p of lm) {
-    if (p.x < minX) minX = p.x;
+    const flippedX = 1 - p.x;
+    if (flippedX < minX) minX = flippedX;
     if (p.y < minY) minY = p.y;
-    if (p.x > maxX) maxX = p.x;
+    if (flippedX > maxX) maxX = flippedX;
     if (p.y > maxY) maxY = p.y;
   }
-  const pad = 12;
+
+  const pad = 20;
   const x = Math.max(0, minX * canvas.width - pad);
   const y = Math.max(0, minY * canvas.height - pad);
   const w = Math.min(canvas.width - x, (maxX - minX) * canvas.width + pad * 2);
@@ -461,6 +465,7 @@ function computeBBox(canvas: HTMLCanvasElement, lm: Pt[]): BBox {
     canvas.height - y,
     (maxY - minY) * canvas.height + pad * 2,
   );
+
   return { x, y, w, h };
 }
 
