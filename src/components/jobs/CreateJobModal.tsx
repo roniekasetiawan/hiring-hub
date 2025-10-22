@@ -223,9 +223,12 @@ const RequirementToggle: FC<RequirementToggleProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-between p-4">
-      <p className="text-sm text-gray-700">{label}</p>
-      <div className="flex items-center space-x-2">
+    <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3 p-4 ">
+      <p className="text-sm font-medium text-gray-700 text-center sm:text-left">
+        {label}
+      </p>
+
+      <div className="flex flex-wrap justify-center sm:justify-end gap-2">
         {options.map((option) => {
           const isDisabled = disabledOptions.includes(option);
           return (

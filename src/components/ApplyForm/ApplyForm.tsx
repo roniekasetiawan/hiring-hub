@@ -145,7 +145,8 @@ const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
               <ArrowLeft size={24} />
             </button>
             <h1 className="text-xl font-bold text-gray-900">
-              Apply Front End at Rakamin
+              Apply {job.title} {job.company_name ? "at" : ""}{" "}
+              {job.company_name}
             </h1>
             <div className="w-6"></div>
             <div className="flex items-center gap-2.5 text-sm text-gray-500 p-3">

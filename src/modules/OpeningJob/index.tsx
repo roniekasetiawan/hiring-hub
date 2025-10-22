@@ -6,6 +6,8 @@ import { PaginatedJobsResponse, Job } from "./types/job";
 import { JobDetails } from "./components/JobDetails";
 import { JobList } from "./components/JobList";
 import { fetchJobs } from "./services/jobService";
+import { useMediaQuery, useTheme } from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 
 export default function OpeningJob() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -14,6 +16,11 @@ export default function OpeningJob() {
   const [hasNextPage, setHasNextPage] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
+
+  const theme = useTheme<Theme>();
+  const mdUp = useMediaQuery(theme.breakpoints.up("md"));
+  const isMobile = !mdUp;
 
   const loadMoreJobs = useCallback(async () => {
     if (isLoading || !hasNextPage) return;
@@ -23,11 +30,9 @@ export default function OpeningJob() {
 
     try {
       const url = `/api/opening-jobs?page=${page}&limit=5`;
-
       const response: PaginatedJobsResponse = await fetchJobs(url);
 
       setJobs((prevJobs) => [...prevJobs, ...response.data]);
-
       setHasNextPage(response.hasNextPage);
       setPage((prevPage) => prevPage + 1);
     } catch (err: any) {
@@ -42,13 +47,20 @@ export default function OpeningJob() {
     if (jobs.length === 0) {
       loadMoreJobs();
     }
-  }, []);
+  }, [jobs.length, loadMoreJobs]);
+
+  useEffect(() => {
+    if (!selectedJobId && jobs.length > 0) {
+      setSelectedJobId(jobs[0].id);
+    }
+  }, [jobs, selectedJobId]);
 
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
 
-  if (!selectedJobId && jobs.length > 0) {
-    setSelectedJobId(jobs[0].id);
-  }
+  const handleSelectJob = (id: string) => {
+    setSelectedJobId(id);
+    if (isMobile) setIsMobileDetailsOpen(true);
+  };
 
   if (isLoading && jobs.length === 0) {
     return (
@@ -68,12 +80,12 @@ export default function OpeningJob() {
   }
 
   return (
-    <div className="grid h-full w-full grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-4">
+    <div className="relative grid h-full w-full grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-4">
       <div className="h-full md:col-span-1 lg:col-span-1 pb-20">
         <JobList
           jobs={jobs}
           selectedJobId={selectedJobId}
-          onSelectJob={setSelectedJobId}
+          onSelectJob={handleSelectJob}
           isLoading={isLoading}
           hasNextPage={hasNextPage}
           loadMoreJobs={loadMoreJobs}
@@ -83,6 +95,26 @@ export default function OpeningJob() {
       <div className="hidden h-full md:col-span-2 md:block lg:col-span-3">
         <JobDetails job={selectedJob} />
       </div>
+
+      {isMobile && isMobileDetailsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="relative overflow-visible rounded-2xl bg-white p-5 shadow-2xl">
+            <button
+              onClick={() => setIsMobileDetailsOpen(false)}
+              aria-label="Close"
+              className="absolute right-0 -top-10 md:-top-5 md:-right-5
+                 z-10 flex h-9 w-9 items-center justify-center
+                 text-black
+                 rounded-full bg-white shadow-lg ring-1 ring-black/10
+                 hover:bg-gray-50"
+            >
+              ✕
+            </button>
+
+            <JobDetails job={selectedJob} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

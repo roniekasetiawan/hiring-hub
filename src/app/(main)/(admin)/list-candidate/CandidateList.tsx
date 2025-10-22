@@ -126,6 +126,8 @@ export default function JobListPage() {
   const showEmptyState =
     !isLoading && candidates.length === 0 && !debouncedSearchTerm;
 
+  const title = searchParams.get("title") || "Untitled Job";
+
   return (
     <PageID
       title="Management Menu"
@@ -138,8 +140,8 @@ export default function JobListPage() {
         ],
       }}
     >
-      <Typography variant="h3" color="black" mb={3}>
-        Front End Developer
+      <Typography variant="h3" color="black" mb={3} mt={10}>
+        {title}
       </Typography>
 
       {showEmptyState ? (

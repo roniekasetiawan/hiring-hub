@@ -100,7 +100,7 @@ export default function JobListPage() {
           )}
         </div>
 
-        <aside className="hidden w-[350px] shrink-0 md:block">
+        <aside className="hidden md:block w-[350px] shrink-0">
           <div
             className="relative mx-auto max-w-xl overflow-hidden rounded-2xl bg-cover bg-center text-white shadow-lg"
             style={{
@@ -121,7 +121,7 @@ export default function JobListPage() {
               <div className="mt-8">
                 <button
                   onClick={toggleModal}
-                  className="rounded-lg hover:cursor-pointer w-full bg-teal-500 px-8 py-3 text-lg font-bold text-white transition hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-gray-900"
+                  className="w-full hover:cursor-pointer rounded-lg bg-teal-500 px-8 py-3 text-lg font-bold text-white transition hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-gray-900"
                   data-testid="create-job-cta"
                 >
                   Create a new job
@@ -130,6 +130,14 @@ export default function JobListPage() {
             </div>
           </div>
         </aside>
+
+        <button
+          onClick={toggleModal}
+          className="md:hidden fixed bottom-6 right-6 z-50 flex h-14 w-34 items-center justify-center rounded-full bg-teal-600 text-white text-3xl font-bold shadow-lg hover:bg-teal-700 focus:outline-none focus:ring-4 focus:ring-teal-400 transition-all"
+          aria-label="Create a new job"
+        >
+          + &nbsp; <span className="text-lg">Jobs</span>
+        </button>
         <JobOpeningModal isOpen={isModalOpen} onClose={toggleModal} />
       </div>
     </PageID>
