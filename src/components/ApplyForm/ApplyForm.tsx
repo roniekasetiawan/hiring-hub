@@ -135,59 +135,66 @@ const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
 
   return (
     <>
-      <div className="w-2xl mx-auto bg-white rounded-lg shadow-xl flex flex-col max-h-[80vh]">
-        <div className="flex-shrink-0 p-6 sm:pb-4 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-4">
+      <div className="mx-auto w-full max-w-[92vw] sm:max-w-2xl md:max-w-3xl mt-15 lg:max-w-4xl bg-white rounded-2xl shadow-xl flex flex-col h-[90vh] md:max-h-[80vh]">
+        <div className="flex-shrink-0 border-b border-gray-200 p-4 sm:p-6">
+          <div className="mb-2 flex flex-col items-start justify-between gap-3 sm:mb-4 sm:flex-row sm:items-center">
             <button
               onClick={doClose}
-              className="text-gray-600 hover:text-gray-900 p-1 -ml-1 hover:cursor-pointer"
+              className="text-gray-600 hover:text-gray-900 p-1 hover:cursor-pointer"
+              aria-label="Back"
             >
               <ArrowLeft size={24} />
             </button>
-            <h1 className="text-xl font-bold text-gray-900">
+
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 text-left sm:text-center">
               Apply {job.title} {job.company_name ? "at" : ""}{" "}
               {job.company_name}
             </h1>
-            <div className="w-6"></div>
-            <div className="flex items-center gap-2.5 text-sm text-gray-500 p-3">
-              <p>ℹ️ This field required to fill</p>
-            </div>
-            <p onClick={doClose}>x</p>
+
+            <div className="w-6 sm:w-8" />
+          </div>
+
+          <div className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-500 p-2 sm:p-3">
+            <p>ℹ️ This field required to fill</p>
           </div>
         </div>
 
         <form
           id="apply-form-main"
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-5 overflow-y-auto p-6 sm:pt-6"
+          className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 gap-5 sm:grid-cols-2"
         >
           {!isOff("photoProfile") && (
-            <Controller
-              name="photoProfile"
-              control={control}
-              render={({ field }) => (
-                <ProfileUploader
-                  value={field.value as any}
-                  onChange={field.onChange}
-                  onTakePicClick={() => setCaptureOpen(true)}
-                  error={(errors as any).photoProfile}
-                />
-              )}
-            />
+            <div className="sm:col-span-2">
+              <Controller
+                name="photoProfile"
+                control={control}
+                render={({ field }) => (
+                  <ProfileUploader
+                    value={field.value as any}
+                    onChange={field.onChange}
+                    onTakePicClick={() => setCaptureOpen(true)}
+                    error={(errors as any).photoProfile}
+                  />
+                )}
+              />
+            </div>
           )}
 
           {!isOff("fullName") && (
-            <FormField
-              label="Full name"
-              required={isRequired("fullName")}
-              error={(errors as any).fullName}
-            >
-              <TextInput
-                placeholder="Enter your full name"
-                error={!!(errors as any).fullName}
-                {...register("fullName" as any)}
-              />
-            </FormField>
+            <div className="sm:col-span-2">
+              <FormField
+                label="Full name"
+                required={isRequired("fullName")}
+                error={(errors as any).fullName}
+              >
+                <TextInput
+                  placeholder="Enter your full name"
+                  error={!!(errors as any).fullName}
+                  {...register("fullName" as any)}
+                />
+              </FormField>
+            </div>
           )}
 
           {!isOff("dateOfBirth") && (
@@ -233,24 +240,26 @@ const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
           )}
 
           {!isOff("domicile") && (
-            <FormField
-              label="Domicile"
-              required={isRequired("domicile")}
-              error={(errors as any).domicile}
-            >
-              <Controller
-                name="domicile"
-                control={control}
-                render={({ field }) => (
-                  <ProvinceAutoComplete
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    error={(errors as any).domicile}
-                  />
-                )}
-              />
-            </FormField>
+            <div className="sm:col-span-2">
+              <FormField
+                label="Domicile"
+                required={isRequired("domicile")}
+                error={(errors as any).domicile}
+              >
+                <Controller
+                  name="domicile"
+                  control={control}
+                  render={({ field }) => (
+                    <ProvinceAutoComplete
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      error={(errors as any).domicile}
+                    />
+                  )}
+                />
+              </FormField>
+            </div>
           )}
 
           {!isOff("phoneNumber") && (
@@ -290,21 +299,23 @@ const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
           )}
 
           {!isOff("linkedin") && (
-            <FormField
-              label="Link Linkedin"
-              required={isRequired("linkedin")}
-              error={(errors as any).linkedin}
-            >
-              <TextInput
-                placeholder="https://www.linkedin.com/in/username"
-                error={!!(errors as any).linkedin}
-                {...register("linkedin" as any)}
-              />
-            </FormField>
+            <div className="sm:col-span-2">
+              <FormField
+                label="Link Linkedin"
+                required={isRequired("linkedin")}
+                error={(errors as any).linkedin}
+              >
+                <TextInput
+                  placeholder="https://www.linkedin.com/in/username"
+                  error={!!(errors as any).linkedin}
+                  {...register("linkedin" as any)}
+                />
+              </FormField>
+            </div>
           )}
         </form>
 
-        <div className="flex-shrink-0 p-6 sm:pt-4 border-t border-gray-200">
+        <div className="sticky bottom-0 border-t border-gray-200 bg-white p-4 sm:p-6">
           <button
             type="submit"
             form="apply-form-main"

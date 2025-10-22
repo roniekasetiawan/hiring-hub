@@ -80,7 +80,7 @@ export default function OpeningJob() {
   }
 
   return (
-    <div className="relative grid h-full w-full grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-4">
+    <div className="relative grid h-full w-full max-w-7xl  mx-auto grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-4">
       <div className="h-full md:col-span-1 lg:col-span-1 pb-20">
         <JobList
           jobs={jobs}
