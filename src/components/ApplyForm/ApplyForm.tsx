@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ApplyFormData, ApplyFormSchema } from "./ApplyFormSchema";
+import {
+  buildApplyFormSchema,
+  normalizeApplicationsConfig,
+  type ApplyFormData,
+  type ApplicationsConfigAPI,
+} from "./ApplyFormSchema";
 import { ArrowLeft } from "lucide-react";
-import base64toFile from "@/utility/base64toFile";
-
 import FormField from "./FormField";
 import TextInput from "./TextInput";
 import RadioGroup from "./RadioGroup";
-import ProfileUploader from "./ProfileUploader";
 import DatePicker from "../(input)/DatePicker";
 import PhoneNumber from "../(input)/PhoneNumber";
 import ProvinceAutoComplete from "../(input)/ProvinceAutoComplete";
@@ -18,6 +20,8 @@ import CaptureModal from "@/app/capture/HandCapture";
 import Portal from "@/components/Portal";
 import { useRouter } from "next/navigation";
 import { Job } from "@/modules/OpeningJob/types/job";
+import ProfileUploader from "@/components/ApplyForm/ProfileUploader";
+import base64toFile from "@/utility/base64toFile";
 
 interface ApplyFormProps {
   doClose?: () => void;
@@ -27,6 +31,36 @@ interface ApplyFormProps {
 const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fieldMode = useMemo(
+    () =>
+      normalizeApplicationsConfig(
+        (job as any)?.applications_config as ApplicationsConfigAPI,
+      ),
+    [job],
+  );
+  const dynamicSchema = useMemo(
+    () =>
+      buildApplyFormSchema(
+        (job as any)?.applications_config as ApplicationsConfigAPI,
+      ),
+    [job],
+  );
+
+  const defaultValues = useMemo(
+    () => ({
+      photoProfile: undefined as File | undefined,
+      fullName: "",
+      dateOfBirth: undefined as Date | undefined,
+      pronoun: undefined as "female" | "male" | undefined,
+      domicile: null as any,
+      phoneNumber: null as any,
+      email: "",
+      linkedin: "",
+    }),
+    [],
+  );
+
   const {
     register,
     handleSubmit,
@@ -34,44 +68,54 @@ const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
     setValue,
     formState: { errors },
   } = useForm<ApplyFormData>({
-    resolver: zodResolver(ApplyFormSchema),
+    resolver: zodResolver(dynamicSchema),
+    defaultValues,
   });
 
+  const isOff = (k: keyof typeof fieldMode) => fieldMode[k] === "Off";
+  const isRequired = (k: keyof typeof fieldMode) =>
+    fieldMode[k] === "Mandatory";
   const [isCaptureOpen, setCaptureOpen] = useState(false);
 
   const onSubmit: SubmitHandler<ApplyFormData> = async (data) => {
     setIsSubmitting(true);
 
     const formData = new FormData();
-
-    formData.append("jobId", job.id);
-    formData.append("fullName", data.fullName);
-    formData.append("dateOfBirth", data.dateOfBirth.toDateString());
-    formData.append("pronoun", data.pronoun);
-    formData.append("domicile", JSON.stringify(data.domicile));
-    formData.append("phoneNumber", JSON.stringify(data.phoneNumber));
-    formData.append("email", data.email);
-    formData.append("linkedin", data.linkedin);
-
-    if (data.photoProfile) {
-      formData.append("photoProfile", data.photoProfile);
+    formData.append("jobId", job.id || "");
+    formData.append("fullName", (data as any).fullName ?? "");
+    formData.append(
+      "dateOfBirth",
+      (data as any).dateOfBirth ? (data as any).dateOfBirth.toDateString() : "",
+    );
+    formData.append("pronoun", (data as any).pronoun ?? "");
+    formData.append(
+      "domicile",
+      (data as any).domicile ? JSON.stringify((data as any).domicile) : "",
+    );
+    formData.append(
+      "phoneNumber",
+      (data as any).phoneNumber
+        ? JSON.stringify((data as any).phoneNumber)
+        : "",
+    );
+    formData.append("email", (data as any).email ?? "");
+    formData.append("linkedin", (data as any).linkedin ?? "");
+    if ((data as any).photoProfile) {
+      formData.append("photoProfile", (data as any).photoProfile as File);
     }
 
     try {
-      const response = await fetch("/api/apply", {
+      const res = await fetch("/api/apply", {
         method: "POST",
         body: formData,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to submit application");
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || "Failed to submit application");
       }
-
       router.push("/success-apply");
-    } catch (error: any) {
-      console.error("Submission failed:", error);
-      alert(`Error: ${error.message}`);
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -80,10 +124,7 @@ const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
   const handlePhotoSubmit = (imgData: string) => {
     const file = base64toFile(imgData, "profile-photo.jpg");
     // @ts-ignore
-    setValue("photoProfile", file, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    setValue("photoProfile", file, { shouldValidate: true, shouldDirty: true });
     setCaptureOpen(false);
   };
 
@@ -119,116 +160,154 @@ const ApplyForm: any = ({ doClose, job }: ApplyFormProps) => {
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-5 overflow-y-auto p-6 sm:pt-6"
         >
-          <Controller
-            name="photoProfile"
-            control={control}
-            render={({ field }) => {
-              console.log({ field });
-              return (
+          {!isOff("photoProfile") && (
+            <Controller
+              name="photoProfile"
+              control={control}
+              render={({ field }) => (
                 <ProfileUploader
-                  value={field.value}
+                  value={field.value as any}
                   onChange={field.onChange}
                   onTakePicClick={() => setCaptureOpen(true)}
-                  // @ts-ignore
-                  error={errors.photoProfile}
-                />
-              );
-            }}
-          />
-
-          <FormField label="Full name" required error={errors.fullName}>
-            <TextInput
-              placeholder="Enter your full name"
-              error={!!errors.fullName}
-              {...register("fullName")}
-            />
-          </FormField>
-
-          <FormField label="Date of birth" required error={errors.dateOfBirth}>
-            <Controller
-              name="dateOfBirth"
-              control={control}
-              render={({ field }) => (
-                <DatePicker
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.dateOfBirth}
+                  error={(errors as any).photoProfile}
                 />
               )}
             />
-          </FormField>
+          )}
 
-          <FormField label="Pronoun (gender)" required error={errors.pronoun}>
-            <Controller
-              name="pronoun"
-              control={control}
-              render={({ field }) => (
-                <RadioGroup
-                  name={field.name}
-                  options={pronounOptions}
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-          </FormField>
+          {!isOff("fullName") && (
+            <FormField
+              label="Full name"
+              required={isRequired("fullName")}
+              error={(errors as any).fullName}
+            >
+              <TextInput
+                placeholder="Enter your full name"
+                error={!!(errors as any).fullName}
+                {...register("fullName" as any)}
+              />
+            </FormField>
+          )}
 
-          <FormField label="Domicile" required error={errors.domicile}>
-            <Controller
-              name="domicile"
-              control={control}
-              render={({ field }) => (
-                <ProvinceAutoComplete
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.domicile}
-                />
-              )}
-            />
-          </FormField>
+          {!isOff("dateOfBirth") && (
+            <FormField
+              label="Date of birth"
+              required={isRequired("dateOfBirth")}
+              error={(errors as any).dateOfBirth}
+            >
+              <Controller
+                name="dateOfBirth"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={(errors as any).dateOfBirth}
+                  />
+                )}
+              />
+            </FormField>
+          )}
 
-          <FormField label="Phone number" required error={errors.phoneNumber}>
-            <Controller
-              name="phoneNumber"
-              control={control}
-              render={({ field }) => (
-                <PhoneNumber
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.phoneNumber}
-                />
-              )}
-            />
-          </FormField>
+          {!isOff("pronoun") && (
+            <FormField
+              label="Pronoun (gender)"
+              required={isRequired("pronoun")}
+              error={(errors as any).pronoun}
+            >
+              <Controller
+                name="pronoun"
+                control={control}
+                render={({ field }) => (
+                  <RadioGroup
+                    name={field.name}
+                    options={pronounOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </FormField>
+          )}
 
-          <FormField label="Email" required error={errors.email}>
-            <TextInput
-              type="email"
-              placeholder="Enter your email address"
-              error={!!errors.email}
-              {...register("email")}
-            />
-          </FormField>
+          {!isOff("domicile") && (
+            <FormField
+              label="Domicile"
+              required={isRequired("domicile")}
+              error={(errors as any).domicile}
+            >
+              <Controller
+                name="domicile"
+                control={control}
+                render={({ field }) => (
+                  <ProvinceAutoComplete
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={(errors as any).domicile}
+                  />
+                )}
+              />
+            </FormField>
+          )}
 
-          <FormField label="Link Linkedin" required error={errors.linkedin}>
-            <TextInput
-              placeholder="https://www.linkedin.com/in/username"
-              error={!!errors.linkedin}
-              {...register("linkedin")}
-            />
-          </FormField>
+          {!isOff("phoneNumber") && (
+            <FormField
+              label="Phone number"
+              required={isRequired("phoneNumber")}
+              error={(errors as any).phoneNumber}
+            >
+              <Controller
+                name="phoneNumber"
+                control={control}
+                render={({ field }) => (
+                  <PhoneNumber
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={(errors as any).phoneNumber}
+                  />
+                )}
+              />
+            </FormField>
+          )}
+
+          {!isOff("email") && (
+            <FormField
+              label="Email"
+              required={isRequired("email")}
+              error={(errors as any).email}
+            >
+              <TextInput
+                type="email"
+                placeholder="Enter your email address"
+                error={!!(errors as any).email}
+                {...register("email" as any)}
+              />
+            </FormField>
+          )}
+
+          {!isOff("linkedin") && (
+            <FormField
+              label="Link Linkedin"
+              required={isRequired("linkedin")}
+              error={(errors as any).linkedin}
+            >
+              <TextInput
+                placeholder="https://www.linkedin.com/in/username"
+                error={!!(errors as any).linkedin}
+                {...register("linkedin" as any)}
+              />
+            </FormField>
+          )}
         </form>
 
         <div className="flex-shrink-0 p-6 sm:pt-4 border-t border-gray-200">
           <button
             type="submit"
             form="apply-form-main"
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold
-                     py-3 px-4 rounded-lg transition-colors duration-200
-                     focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
           >
             {isSubmitting ? "Submitting" : "Submit"}
           </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC } from "react";
+import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 
 interface Candidate {
   id: string;
@@ -19,22 +19,102 @@ interface SortConfig {
   direction: SortDirection;
 }
 
+type ColumnWidths = Partial<Record<keyof Candidate, number>>;
+
 const TableHeader: FC<{
   columns: { key: keyof Candidate; label: string }[];
+  columnOrder: (keyof Candidate)[];
+  columnWidths: ColumnWidths;
+  onColumnOrderChange: (next: (keyof Candidate)[]) => void;
+  onColumnWidthChange: (key: keyof Candidate, width: number) => void;
+
   requestSort: (key: keyof Candidate) => void;
   sortConfig: SortConfig | null;
   onSelectAll: () => void;
   isAllSelected: boolean;
-}> = ({ columns, requestSort, sortConfig, onSelectAll, isAllSelected }) => {
+}> = ({
+  columns,
+  columnOrder,
+  columnWidths,
+  onColumnOrderChange,
+  onColumnWidthChange,
+  requestSort,
+  sortConfig,
+  onSelectAll,
+  isAllSelected,
+}) => {
   const getSortIcon = (key: keyof Candidate) => {
     if (!sortConfig || sortConfig.key !== key) return "↕";
     if (sortConfig.direction === "ascending") return "↑";
     return "↓";
   };
+
+  const dragKeyRef = useRef<keyof Candidate | null>(null);
+  const handleDragStart = (key: keyof Candidate) => () => {
+    dragKeyRef.current = key;
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+  const handleDrop = (targetKey: keyof Candidate) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const src = dragKeyRef.current;
+    if (!src || src === targetKey) return;
+    const next = [...columnOrder];
+    const from = next.indexOf(src);
+    const to = next.indexOf(targetKey);
+    if (from === -1 || to === -1) return;
+    next.splice(from, 1);
+    next.splice(to, 0, src);
+    onColumnOrderChange(next);
+    dragKeyRef.current = null;
+  };
+
+  const resizingRef = useRef<{
+    key: keyof Candidate;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+
+  const onResizeStart = (key: keyof Candidate) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth =
+      columnWidths[key] ??
+      (e.currentTarget as HTMLElement).parentElement?.getBoundingClientRect()
+        .width ??
+      160;
+    resizingRef.current = { key, startX, startWidth };
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      const state = resizingRef.current;
+      if (!state) return;
+      const delta = e.clientX - state.startX;
+      const newWidth = Math.max(80, Math.round(state.startWidth + delta));
+      onColumnWidthChange(state.key, newWidth);
+    };
+    const onMouseUp = () => {
+      resizingRef.current = null;
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [onColumnWidthChange]);
+
+  const columnsByKey = useMemo(
+    () => Object.fromEntries(columns.map((c) => [c.key, c.label] as const)),
+    [columns],
+  );
+
   return (
-    <thead className="bg-slate-50">
+    <thead className="bg-slate-50 select-none">
       <tr>
-        <th className="p-4 text-left">
+        <th className="p-4 text-left w-10">
           <input
             type="checkbox"
             checked={isAllSelected}
@@ -42,13 +122,25 @@ const TableHeader: FC<{
             className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
           />
         </th>
-        {columns.map(({ key, label }) => (
+
+        {columnOrder.map((key) => (
           <th
             key={key}
+            draggable
+            onDragStart={handleDragStart(key)}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop(key)}
             onClick={() => requestSort(key)}
-            className="cursor-pointer p-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 hover:bg-slate-100"
+            className="relative cursor-pointer p-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 hover:bg-slate-100"
+            style={{
+              width: columnWidths[key] ? `${columnWidths[key]}px` : undefined,
+            }}
           >
-            {label} {getSortIcon(key)}
+            {columnsByKey[key]} {getSortIcon(key)}
+            <span
+              onMouseDown={onResizeStart(key)}
+              className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+            />
           </th>
         ))}
       </tr>
@@ -60,9 +152,11 @@ const TableRow: FC<{
   candidate: Candidate;
   onSelect: (id: string) => void;
   isSelected: boolean;
-}> = ({ candidate, onSelect, isSelected }) => (
+  columnKeys: (keyof Candidate)[];
+  columnWidths: ColumnWidths;
+}> = ({ candidate, onSelect, isSelected, columnKeys, columnWidths }) => (
   <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
-    <td className="p-4">
+    <td className="p-4 w-10">
       <input
         type="checkbox"
         checked={isSelected}
@@ -70,21 +164,34 @@ const TableRow: FC<{
         className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
       />
     </td>
-    <td className="p-4 text-sm text-gray-700">{candidate.namaLengkap}</td>
-    <td className="p-4 text-sm text-gray-700">{candidate.emailAddress}</td>
-    <td className="p-4 text-sm text-gray-700">{candidate.phoneNumbers}</td>
-    <td className="p-4 text-sm text-gray-700">{candidate.dateOfBirth}</td>
-    <td className="p-4 text-sm text-gray-700">{candidate.domicile}</td>
-    <td className="p-4 text-sm text-gray-700">{candidate.gender}</td>
-    <td className="p-4 text-sm text-teal-600 hover:underline">
-      <a
-        href={candidate.linkLinkedin}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {candidate.linkLinkedin}
-      </a>
-    </td>
+
+    {columnKeys.map((key) => {
+      const value =
+        key === "linkLinkedin" ? (
+          <a
+            href={candidate.linkLinkedin}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-teal-600 hover:underline"
+          >
+            {candidate.linkLinkedin}
+          </a>
+        ) : (
+          (candidate as any)[key]
+        );
+
+      return (
+        <td
+          key={key}
+          className="p-4 text-sm text-gray-700"
+          style={{
+            width: columnWidths[key] ? `${columnWidths[key]}px` : undefined,
+          }}
+        >
+          {value}
+        </td>
+      );
+    })}
   </tr>
 );
 
@@ -145,7 +252,7 @@ const CandidateTable: FC<CandidateTableProps> = ({
   onSelectAll,
   filterValue,
 }) => {
-  const columns: { key: keyof Candidate; label: string }[] = [
+  const baseColumns: { key: keyof Candidate; label: string }[] = [
     { key: "namaLengkap", label: "Nama Lengkap" },
     { key: "emailAddress", label: "Email Address" },
     { key: "phoneNumbers", label: "Phone Numbers" },
@@ -155,8 +262,25 @@ const CandidateTable: FC<CandidateTableProps> = ({
     { key: "linkLinkedin", label: "Link Linkedin" },
   ];
 
+  const [columnOrder, setColumnOrder] = useState<(keyof Candidate)[]>(
+    baseColumns.map((c) => c.key),
+  );
+  const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() => {
+    const defaults: ColumnWidths = {};
+    baseColumns.forEach((c) => {
+      defaults[c.key] = 180;
+    });
+    defaults["namaLengkap"] = 220;
+    defaults["linkLinkedin"] = 260;
+    return defaults;
+  });
+
   const isAllSelected =
     candidates.length > 0 && selectedIds.size === candidates.length;
+
+  const onColumnWidthChange = (key: keyof Candidate, width: number) => {
+    setColumnWidths((prev) => ({ ...prev, [key]: width }));
+  };
 
   return (
     <div className="overflow-hidden rounded-xl bg-white p-4 shadow-md">
@@ -170,7 +294,11 @@ const CandidateTable: FC<CandidateTableProps> = ({
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <TableHeader
-            columns={columns}
+            columns={baseColumns}
+            columnOrder={columnOrder}
+            columnWidths={columnWidths}
+            onColumnOrderChange={setColumnOrder}
+            onColumnWidthChange={onColumnWidthChange}
             requestSort={onRequestSort}
             sortConfig={sortConfig}
             onSelectAll={onSelectAll}
@@ -179,14 +307,17 @@ const CandidateTable: FC<CandidateTableProps> = ({
           <tbody className="divide-y divide-gray-200">
             {isLoading ? (
               <tr>
-                <td colSpan={columns.length + 1} className="p-4 text-center">
+                <td
+                  colSpan={baseColumns.length + 1}
+                  className="p-4 text-center"
+                >
                   Loading candidates...
                 </td>
               </tr>
             ) : candidates.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length + 1}
+                  colSpan={baseColumns.length + 1}
                   className="p-4 text-center text-black"
                 >
                   No candidates found for this search.
@@ -199,6 +330,8 @@ const CandidateTable: FC<CandidateTableProps> = ({
                   candidate={candidate}
                   onSelect={onSelect}
                   isSelected={selectedIds.has(candidate.id)}
+                  columnKeys={columnOrder}
+                  columnWidths={columnWidths}
                 />
               ))
             )}

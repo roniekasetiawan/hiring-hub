@@ -13,6 +13,7 @@ import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert } from "@mui/material";
+import Swal from "sweetalert2";
 
 type Option = "Mandatory" | "Optional" | "Off";
 
@@ -361,7 +362,12 @@ const JobOpeningModal: FC<JobOpeningModalProps> = ({ isOpen, onClose }) => {
         throw new Error(result.message || "An unknown error occurred");
       }
 
-      alert("Job opening created successfully!");
+      Swal.fire({
+        title: "Success!",
+        text: "Job opening created successfully!",
+        icon: "success",
+        confirmButtonText: "Great!",
+      });
       reset();
       onClose();
     } catch (error: any) {

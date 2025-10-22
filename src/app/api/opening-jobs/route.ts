@@ -17,6 +17,7 @@ interface FrontendJob {
   startDate: string;
   avatar?: string | null;
   name: string;
+  applications_config: string;
 }
 
 export async function GET(req: NextRequest) {
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
         startDate: formattedDate,
         name: job.users.full_name,
         avatar: job.users.avatar ?? "",
+        applications_config: job.application_form_config,
       };
     });
 

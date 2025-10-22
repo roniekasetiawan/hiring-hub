@@ -14,7 +14,7 @@ const TextInput = React.forwardRef<HTMLInputElement, TextInputProps>(
       <input
         {...props}
         ref={ref}
-        className={`w-full px-4 py-2.5 border rounded-lg 
+        className={`w-full px-4 py-2.5 border rounded-lg text-black 
                     focus:outline-none focus:ring-2 focus:border-transparent
                     placeholder:text-gray-400
                     ${errorClasses} ${className}`}
