@@ -52,8 +52,24 @@ export default function RegisterPage() {
     setErrMsg(null);
     setInfoMsg(null);
     try {
-      await authService.signup(v.email, v.password, v.role, v.full_name);
-      router.replace("/dashboard");
+      const res = await authService.signup(
+        v.email,
+        v.password,
+        v.role,
+        v.full_name,
+      );
+      if (
+        //@ts-ignore
+        res?.data?.user?.role === "admin" ||
+        //@ts-ignore
+        res?.data?.user?.role === "recruiter"
+      ) {
+        router.replace("/jobs");
+        return;
+      }
+      router.replace("/opening-job");
+
+      // router.replace("/dashboard");
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || "Sign up failed";
       setErrMsg(msg);
